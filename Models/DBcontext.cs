@@ -34,8 +34,8 @@ namespace WebApplication2Shelf_Life.Models
             // listing & rating 1:m
             modelBuilder.Entity<Rating>()
             .HasOne(r => r.Listings)
-            .WithMany(l => l.Ratings)
-            .HasForeignKey(r => r.ListingID)
+            .WithOne(l => l.Rating)
+            .HasForeignKey<Listings>(r => r.RatingID)
             .OnDelete(DeleteBehavior.Cascade);
 
        

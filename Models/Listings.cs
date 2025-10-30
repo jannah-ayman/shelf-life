@@ -31,9 +31,9 @@ namespace WebApplication2Shelf_Life.Models
         public int UserID { get; set; }
         [ForeignKey(nameof(UserID))]
         public virtual User User { get; set; }
-        //public int RatingID { get; set; }
-        //[ForeignKey(nameof(RatingID))]
-        //public virtual Rating Rating { get; set; }
+        public int RatingID { get; set; }
+        [ForeignKey(nameof(RatingID))]
+        public virtual Rating Rating { get; set; }
         // swap 
         public int  OfferedListingID { get; set; }
         [ForeignKey(nameof(OfferedListingID))]
@@ -56,6 +56,6 @@ namespace WebApplication2Shelf_Life.Models
         public DateTime CreatedAt { get; set; }= DateTime.Now;
         public int AvailableQuantity { get; set; }
         public ICollection<Request> requests { get; set; }= new List<Request>();
-        public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
+        //public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
     }
 }

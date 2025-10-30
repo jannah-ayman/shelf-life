@@ -1,0 +1,33 @@
+﻿# Build folders
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Logs, temp and cache
+*.log
+*.tlog
+*.cache
+*.pdb
+*.tmp
+*.temp
+
+# Local environment settings
+appsettings.Development.json
+
+# VS Code
+.vscode/
+
+# Database and index files
+*.dbmdl
+*.vsidx
+*.jfm
+
+# Publish folders
+**/publish/
+**/PublishProfiles/
