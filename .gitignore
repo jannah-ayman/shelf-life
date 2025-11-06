@@ -1,0 +1,19 @@
+# Visual Studio
+.vs/
+
+# Build directories
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+
+# Publish
+publish/
+
+# Logs
+*.log
+
+# Environment
+*.env
