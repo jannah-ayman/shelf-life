@@ -1,6 +1,0 @@
-@shelfLife_HostAddress = http://localhost:5167
-
-GET {{shelfLife_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
