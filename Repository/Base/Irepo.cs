@@ -1,4 +1,4 @@
-﻿namespace ShelfLife.Reposetory.Base
+﻿namespace ShelfLife.Repository.Base
 {
     public interface Irepo <T> where T : class
     {

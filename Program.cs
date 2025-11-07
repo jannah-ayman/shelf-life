@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using ShelfLife.Models;
-using ShelfLife.Reposetory;
-using ShelfLife.Reposetory.Base;
+using ShelfLife.Repository;
+using ShelfLife.Repository.Base;
 namespace ShelfLife
 {
     public class Program

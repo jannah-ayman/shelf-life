@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using ShelfLife.Reposetory.Base;
+using ShelfLife.Repository.Base;
 
-namespace ShelfLife.Reposetory
+namespace ShelfLife.Repository
 {
     public class MainRepository<T> : Irepo<T> where T : class
     {
