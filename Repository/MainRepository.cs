@@ -1,45 +1,48 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using ShelfLife.Models;
 using ShelfLife.Repository.Base;
 
 namespace ShelfLife.Repository
 {
     public class MainRepository<T> : Irepo<T> where T : class
     {
-      
-        protected DbContext _context;  
-        public MainRepository(DbContext context)
+        protected readonly DBcontext _context;
+        protected readonly DbSet<T> _set;
+
+        public MainRepository(DBcontext context)
         {
             _context = context;
+            _set = _context.Set<T>();
         }
+
         public IEnumerable<T> GetAll()
         {
-            return _context.Set<T>().ToList();
+            return _set.ToList();
         }
 
         public T FindById(int id)
         {
-            return _context.Set<T>().Find(id);
+            return _set.Find(id);
         }
 
         public void Add(T entity)
         {
-            _context.Add(entity);
+            _set.Add(entity);
         }
 
         public void Update(T entity)
         {
-            _context.Update(entity);
+            _set.Update(entity);
         }
 
         public void Delete(T entity)
         {
-            _context.Remove(entity);
+            _set.Remove(entity);
         }
 
         public int Save()
         {
             return _context.SaveChanges();
         }
-
     }
 }

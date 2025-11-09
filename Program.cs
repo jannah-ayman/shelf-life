@@ -14,8 +14,10 @@ namespace ShelfLife
 
             builder.Services.AddDbContext<DBcontext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("Myconection")));
-
+            // REPOS
             builder.Services.AddTransient(typeof(Irepo<>) , typeof(MainRepository<>));
+            builder.Services.AddScoped<BookRepository>();
+
 
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle

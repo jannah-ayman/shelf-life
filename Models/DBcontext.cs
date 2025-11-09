@@ -11,7 +11,7 @@ namespace ShelfLife.Models
         public DbSet<User> Users { get; set; }
         public DbSet<Category> Categories { get; set; }
         public DbSet<Book> Books { get; set; }
-        public DbSet<Listings> Listings { get; set; }
+        //public DbSet<Listings> Listings { get; set; }
         public DbSet<Request> Requests { get; set; }
         public DbSet<Borrow> Borrows { get; set; }
         public DbSet<Delivery> Deliveries { get; set; }
@@ -30,15 +30,13 @@ namespace ShelfLife.Models
             .HasForeignKey(r => r.RaterID)
             .OnDelete(DeleteBehavior.NoAction);
 
-
-            // listing & rating 1:m
             modelBuilder.Entity<Rating>()
-            .HasOne(r => r.Listings)
-            .WithOne(l => l.Rating)
-            .HasForeignKey<Listings>(r => r.RatingID)
-            .OnDelete(DeleteBehavior.Cascade);
+                .HasOne(r => r.Books)   
+                .WithOne(b => b.Rating) 
+                .HasForeignKey<Rating>(r => r.BookID) 
+                .OnDelete(DeleteBehavior.Cascade);
 
-       
+
             //request & borrow 1:1
             modelBuilder.Entity<Request>()
            .HasOne(l => l.Borrow)
@@ -84,18 +82,10 @@ namespace ShelfLife.Models
                 .OnDelete(DeleteBehavior.Restrict);
 
             modelBuilder.Entity<Swap>()
-            .HasOne(s => s.swaps)              
-            .WithMany(l => l.Swaps)            
-            .HasForeignKey(s => s.OfferedListingID)
-            .OnDelete(DeleteBehavior.NoAction);
-
-
-
-
-
-
-
-
+             .HasOne(s => s.OfferedBook)      
+             .WithMany(b => b.Swaps)          
+             .HasForeignKey(s => s.OfferedBookID)
+             .OnDelete(DeleteBehavior.NoAction);
 
         }
     }

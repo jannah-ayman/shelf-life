@@ -29,7 +29,7 @@ namespace ShelfLife.Models
         public ICollection<Notification> Notifications { get; set; } = new List<Notification>(); 
         public ICollection<Subscription> subscriptions { get; set; } = new List<Subscription>();
         public ICollection<Request> requests { get; set; } = new List<Request>();
-        public ICollection<Listings> listings { get; set; } = new List<Listings>();
+        public ICollection<Book> Books { get; set; } = new List<Book>();
         public ICollection<Message> SentMessages { get; set; } = new List<Message>();
         public ICollection<Message> ReceivedMessages { get; set; } = new List<Message>();
         //modifide from database

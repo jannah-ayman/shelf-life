@@ -18,9 +18,9 @@ namespace ShelfLife.Models
         [ForeignKey(nameof(RequesterID))]
         public virtual User? User { get; set; } 
         //listings
-        public int ListingID { get; set; }
-        [ForeignKey(nameof(ListingID))]
-        public virtual Listings? Listings { get; set; }
+        public int BookID { get; set; }
+        [ForeignKey(nameof(BookID))]
+        public virtual Book? Book { get; set; }
         //Borrow
         public int BorrowID { get; set; }
         [ForeignKey(nameof(BorrowID))]
@@ -34,7 +34,7 @@ namespace ShelfLife.Models
         [ForeignKey(nameof(SwapID))]
         public virtual Swap? Swap { get; set; }
         public reqType RequestType { get; set; } 
-        public long Status { get; set; } 
+        public string Status { get; set; } 
         public int RequestedQuantity { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
         public ICollection<Message> Messages { get; set; }= new List<Message>();
