@@ -6,14 +6,14 @@
 
 //namespace ShelfLife.Controllers
 //{
-    
+
 //    [Route("api/[controller]")]
 //    [ApiController]
-//    public class dashboarOrgController : ControllerBase
+//    public class BusinessDashboardController : ControllerBase
 //    {
 //        private readonly BookRepository _repo;
 //        private readonly RequestRepository _reqRepo;
-//        public dashboarOrgController(BookRepository repo , RequestRepository reqRepo)
+//        public BusinessDashboardController(BookRepository repo , RequestRepository reqRepo)
 //        {
 //            _repo = repo;
 //            _reqRepo = reqRepo;
@@ -26,7 +26,7 @@
 //            return Ok(books);
 //        }
 
-        
+
 //        [HttpGet("{id}")]
 //        public IActionResult GetBook(int id)
 //        {
