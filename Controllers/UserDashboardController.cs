@@ -138,11 +138,21 @@ namespace ShelfLife.Controllers
             if (user == null)
                 return NotFound(new { message = "User not found" });
 
-            // Validate: at least one transaction type must be enabled
+            // --- ENFORCE RULES ---
+
+            // Rule 1: only normal users can swap
+            if (createDto.IsSwappable && user.UserType != UserType.NORMAL_USER)
+                return BadRequest(new { message = "Only normal users can enable swapping." });
+
+            // Rule 2: quantity limit for normal users
+            if (user.UserType == UserType.NORMAL_USER && createDto.Quantity > 1)
+                return BadRequest(new { message = "Normal users can only list a quantity of 1." });
+
+            // Validate: at least one transaction type
             if (!createDto.IsSellable && !createDto.IsDonatable && !createDto.IsSwappable)
                 return BadRequest(new { message = "At least one transaction type (Sellable, Donatable, Swappable) must be enabled" });
 
-            // Validate: price is required for sellable items
+            // Validate: price required for sellable items
             if (createDto.IsSellable && !createDto.Price.HasValue)
                 return BadRequest(new { message = "Price is required for sellable items" });
 
@@ -192,9 +202,22 @@ namespace ShelfLife.Controllers
             if (!ownsListing)
                 return Forbid();
 
-            var existingListing = await _listingRepo.GetListingByIdAsync(listingId);
-            if (existingListing == null)
+            // Get the user first
+            var listingEntity = await _userRepo.GetUserByIdAsync(userId);
+            if (listingEntity == null)
+                return NotFound(new { message = "User not found" });
+
+            // Get the listing from the user's listings
+            var listing = listingEntity.BookListings.FirstOrDefault(l => l.BookListingID == listingId);
+            if (listing == null)
                 return NotFound(new { message = "Listing not found" });
+
+            // --- ENFORCE RULES ---
+            if (listingEntity.UserType != UserType.NORMAL_USER && updateDto.IsSwappable)
+                return BadRequest(new { message = "Only normal users can enable swapping." });
+
+            if (listingEntity.UserType == UserType.NORMAL_USER && updateDto.Quantity > 1)
+                return BadRequest(new { message = "Normal users can only list a quantity of 1." });
 
             // Validate: at least one transaction type must be enabled
             if (!updateDto.IsSellable && !updateDto.IsDonatable && !updateDto.IsSwappable)
@@ -203,13 +226,6 @@ namespace ShelfLife.Controllers
             // Validate: price is required for sellable items
             if (updateDto.IsSellable && !updateDto.Price.HasValue)
                 return BadRequest(new { message = "Price is required for sellable items" });
-
-            // Get the listing entity to update
-            var listingEntity = await _userRepo.GetUserByIdAsync(userId);
-            var listing = listingEntity?.BookListings.FirstOrDefault(l => l.BookListingID == listingId);
-
-            if (listing == null)
-                return NotFound(new { message = "Listing not found" });
 
             // Update properties
             listing.Title = updateDto.Title;
@@ -239,6 +255,7 @@ namespace ShelfLife.Controllers
             var listingDetail = await _listingRepo.GetListingByIdAsync(listingId);
             return Ok(listingDetail);
         }
+
 
         // DELETE: api/UserDashboard/{userId}/listings/{listingId}
         [HttpDelete("{userId}/listings/{listingId}")]
