@@ -1,9 +1,4 @@
-﻿// CHANGES:
-// - Implemented true 1:1 by placing a unique FK `OrderID` on Payment (dependent).
-// - Added [Index(OrderID, IsUnique = true)] to enforce one-to-one in DB.
-// - Amount non-null, Status non-null, PaidAt non-null (set when completed).
-
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 

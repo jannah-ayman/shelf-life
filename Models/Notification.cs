@@ -1,8 +1,4 @@
-﻿// CHANGES:
-// - Made UserID required with required navigation via null-forgiving operator.
-// - Title required, Message optional, IsRead non-nullable.
-
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ShelfLife.Models

@@ -1,8 +1,4 @@
-﻿// CHANGES:
-// - Collections non-null and non-nullable.
-// - Kept AverageRating non-null decimal(3,2) with default 0 in code-first seeding/migrations if needed.
-
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ShelfLife.Models

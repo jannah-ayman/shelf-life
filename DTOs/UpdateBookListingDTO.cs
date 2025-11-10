@@ -3,9 +3,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ShelfLife.DTOs
 {
-    // DTO for creating a new book listing
-    public class CreateBookListingDTO
+    // DTO for updating an existing book listing
+    public class UpdateBookListingDTO
     {
+        [Required]
+        public int BookListingID { get; set; }
+
         [Required]
         [MaxLength(500)]
         public string Title { get; set; } = string.Empty;
@@ -41,6 +44,8 @@ namespace ShelfLife.DTOs
         public bool IsSwappable { get; set; }
 
         [Range(1, 1000)]
-        public int Quantity { get; set; } = 1;
+        public int Quantity { get; set; }
+
+        public AvailabilityStatus AvailabilityStatus { get; set; }
     }
 }

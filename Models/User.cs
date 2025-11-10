@@ -1,10 +1,4 @@
-﻿// CHANGES:
-// - Made collections non-null and non-nullable (initialized lists).
-// - Kept optional fields (Phone, Name, Address, City, ProfilePhotoURL) as nullable.
-// - AverageRating non-null decimal(3,2) (default 0 in seed/migrations).
-// - Added clarity note: Orders collection represents orders where the user is the Buyer.
-
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ShelfLife.Models

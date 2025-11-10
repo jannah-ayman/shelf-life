@@ -1,9 +1,4 @@
-﻿// CHANGES:
-// - Left OrderID required (Negotiation must belong to an Order).
-// - OfferedListingID remains optional (only for swaps).
-// - Navigation collections and strings remain as appropriate.
-
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ShelfLife.Models

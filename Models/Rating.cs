@@ -1,9 +1,4 @@
-﻿// CHANGES:
-// - Implemented true 1:1 by placing unique FK `OrderID` on Rating (dependent).
-// - Added [Index(OrderID, IsUnique = true)].
-// - Kept Comment optional, CreatedAt required.
-
-using System.ComponentModel.DataAnnotations;
+﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
