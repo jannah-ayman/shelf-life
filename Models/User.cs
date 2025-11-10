@@ -1,39 +1,60 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿// CHANGES:
+// - Made collections non-null and non-nullable (initialized lists).
+// - Kept optional fields (Phone, Name, Address, City, ProfilePhotoURL) as nullable.
+// - AverageRating non-null decimal(3,2) (default 0 in seed/migrations).
+// - Added clarity note: Orders collection represents orders where the user is the Buyer.
+
+using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ShelfLife.Models
 {
-    public enum Utype
+    public enum UserType
     {
-        Normal,
-        Business
+        NORMAL_USER,
+        BUSINESS
     }
+
     public class User
     {
         [Key]
         public int UserID { get; set; }
-        public string Email { get; set; }
-        [Phone]
+
+        public UserType UserType { get; set; }
+
+        [Required]
+        [MaxLength(200)]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
         [MaxLength(20)]
-        public string Phone { get; set; }
-        public string PasswordHash { get; set; }
-        public Utype UserType { get; set; }
+        public string? Phone { get; set; }
+
+        [Required]
+        [MaxLength(500)]
+        public string PasswordHash { get; set; } = string.Empty;
+
+        [MaxLength(200)]
+        public string? Name { get; set; }
+
+        [MaxLength(500)]
+        public string? Address { get; set; }
+
         [MaxLength(100)]
-        public string ProfileName { get; set; }
-        public string ProfileDescription { get; set; }
-        public string ProfilePhotoURL { get; set; }
-        public string Address { get; set; }
+        public string? City { get; set; }
+
+        [MaxLength(500)]
+        public string? ProfilePhotoURL { get; set; }
+
+        [Column(TypeName = "decimal(3,2)")]
+        public decimal AverageRating { get; set; }
+
         public bool IsActive { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
-        //rating 
-       
-        public ICollection<Notification> Notifications { get; set; } = new List<Notification>(); 
-        public ICollection<Subscription> subscriptions { get; set; } = new List<Subscription>();
-        public ICollection<Request> requests { get; set; } = new List<Request>();
-        public ICollection<Book> Books { get; set; } = new List<Book>();
-        public ICollection<Message> SentMessages { get; set; } = new List<Message>();
-        public ICollection<Message> ReceivedMessages { get; set; } = new List<Message>();
-        //modifide from database
-        public ICollection<Rating> Ratings { get; set; } = new List<Rating>();
-        //public object Rating { get; internal set; }
+        public DateTime CreatedAt { get; set; }
+
+        public ICollection<BookListing> BookListings { get; set; } = new List<BookListing>();
+        // Orders where this user is the Buyer
+        public ICollection<Order> Orders { get; set; } = new List<Order>();
+        public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
     }
 }

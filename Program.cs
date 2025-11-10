@@ -16,7 +16,7 @@ namespace ShelfLife
 options.UseSqlServer(builder.Configuration.GetConnectionString("Myconection")));
             // REPOS
             builder.Services.AddTransient(typeof(Irepo<>) , typeof(MainRepository<>));
-            builder.Services.AddScoped<BookRepository>();
+            builder.Services.AddScoped<BookListingRepository>();
 
 
             builder.Services.AddControllers();

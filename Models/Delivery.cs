@@ -1,30 +1,51 @@
-﻿using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+using Microsoft.EntityFrameworkCore;
 
 namespace ShelfLife.Models
 {
-    public enum status
+    public enum DeliveryStatus
     {
-        Scheduled,
-        InTransit,
-        Delivered,
-        Failed
+        PENDING,
+        ASSIGNED,
+        PICKED_UP,
+        DELIVERED,
+        FAILED
     }
+
+    [Index(nameof(OrderID), IsUnique = true)]
     public class Delivery
     {
+        [Key]
         public int DeliveryID { get; set; }
-        //delivary
-        public int RequestID { get; set; }
-        [ForeignKey(nameof(RequestID))]
-        public virtual Request? Request { get; set; }
-        public string FromLocation { get; set; } = string.Empty;
-        public string ToLocation { get; set; } = string.Empty;
 
-        public string CurrentLocation {  get; set; }
+        public int? DeliveryPersonID { get; set; }
+        [ForeignKey(nameof(DeliveryPersonID))]
+        public DeliveryPerson? DeliveryPerson { get; set; }
+
+        [MaxLength(500)]
+        public string PickupAddress { get; set; } = string.Empty;
+
+        [MaxLength(20)]
+        public string PickupPhone { get; set; } = string.Empty;
+
+        [MaxLength(500)]
+        public string DropoffAddress { get; set; } = string.Empty;
+
+        [MaxLength(20)]
+        public string DropoffPhone { get; set; } = string.Empty;
 
         [Column(TypeName = "decimal(18,2)")]
         public decimal DeliveryFee { get; set; }
-        public status DeliveryStatus { get; set; }
-        //public  int TrackingNumber { get; set; }
-        public DateTime DeliveredAt { get; set; }
+
+        public DeliveryStatus Status { get; set; }
+
+        public DateTime? PickedUpAt { get; set; }
+        public DateTime? DeliveredAt { get; set; }
+
+        // 1:1 with Order (Delivery is dependent)
+        [ForeignKey(nameof(Order))]
+        public int OrderID { get; set; }
+        public Order Order { get; set; } = null!;
     }
 }
