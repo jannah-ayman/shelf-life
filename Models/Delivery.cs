@@ -6,7 +6,6 @@ namespace ShelfLife.Models
 {
     public enum DeliveryStatus
     {
-        PENDING,
         ASSIGNED,
         PICKED_UP,
         DELIVERED,
@@ -39,8 +38,9 @@ namespace ShelfLife.Models
         public decimal DeliveryFee { get; set; }
 
         public DeliveryStatus Status { get; set; }
-
         public DateTime? PickedUpAt { get; set; }
+        public bool DeliveryPersonConfirmed { get; set; } = false;
+        public bool BuyerConfirmed { get; set; } = false;
         public DateTime? DeliveredAt { get; set; }
 
         // 1:1 with Order (Delivery is dependent)

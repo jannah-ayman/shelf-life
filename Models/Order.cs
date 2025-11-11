@@ -16,10 +16,10 @@ namespace ShelfLife.Models
         NEGOTIATING,
         ACCEPTED,
         REJECTED,
-        PAID,
+        CANCELLED,
+        DELIVERY_ASSIGNED,  // NEW: Delivery person assigned,
         DELIVERING,
         COMPLETED,
-        CANCELLED
     }
 
     public class Order

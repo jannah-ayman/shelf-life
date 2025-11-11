@@ -8,13 +8,13 @@ namespace ShelfLife.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UserDashboardController : ControllerBase
+    public class UserController : ControllerBase
     {
         private readonly IUserRepository _userRepo;
         private readonly IBookListingRepository _listingRepo;
         private readonly IOrderRepository _orderRepo;
 
-        public UserDashboardController(
+        public UserController(
             IUserRepository userRepo,
             IBookListingRepository listingRepo,
             IOrderRepository orderRepo)

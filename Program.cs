@@ -23,11 +23,10 @@ namespace ShelfLife
             builder.Services.AddScoped<IBookListingRepository, BookListingRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+            builder.Services.AddScoped<IDeliveryRepository, DeliveryRepository>();
+            builder.Services.AddScoped<IDeliveryPersonRepository, DeliveryPersonRepository>(); // NEW
 
             // Controllers
-            //builder.Services.AddControllers();
-
-            // Configure JSON serialization to handle enums
             builder.Services.AddControllers()
                 .AddJsonOptions(options =>
                 {
@@ -66,7 +65,7 @@ namespace ShelfLife
                 app.UseSwaggerUI(c =>
                 {
                     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Shelf Life API V1");
-                    c.RoutePrefix = "swagger"; // Swagger UI at root
+                    c.RoutePrefix = "swagger";
                 });
             }
 

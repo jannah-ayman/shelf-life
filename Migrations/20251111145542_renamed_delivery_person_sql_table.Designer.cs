@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ShelfLife.Models;
 
@@ -11,9 +12,11 @@ using ShelfLife.Models;
 namespace ShelfLife.Migrations
 {
     [DbContext(typeof(DBcontext))]
-    partial class DBcontextModelSnapshot : ModelSnapshot
+    [Migration("20251111145542_renamed_delivery_person_sql_table")]
+    partial class renamed_delivery_person_sql_table
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -126,17 +129,11 @@ namespace ShelfLife.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("DeliveryID"));
 
-                    b.Property<bool>("BuyerConfirmed")
-                        .HasColumnType("bit");
-
                     b.Property<DateTime?>("DeliveredAt")
                         .HasColumnType("datetime2");
 
                     b.Property<decimal>("DeliveryFee")
                         .HasColumnType("decimal(18,2)");
-
-                    b.Property<bool>("DeliveryPersonConfirmed")
-                        .HasColumnType("bit");
 
                     b.Property<int?>("DeliveryPersonID")
                         .HasColumnType("int");

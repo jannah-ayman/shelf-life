@@ -10,7 +10,7 @@ namespace ShelfLife.Models
         CAR,
         TRUCK
     }
-
+    [Table("DeliveryPerson")]
     public class DeliveryPerson
     {
         [Key]
