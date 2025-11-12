@@ -19,7 +19,6 @@ namespace ShelfLife.DTOs
         public int? CategoryID { get; set; }
         public string? City { get; set; }
         public bool IsSellable { get; set; }
-        public bool IsDonatable { get; set; }
         public bool IsSwappable { get; set; }
         public int Quantity { get; set; }
         public int AvailableQuantity { get; set; }
@@ -46,7 +45,6 @@ namespace ShelfLife.DTOs
         public string? CategoryName { get; set; }
         public string? City { get; set; }
         public bool IsSellable { get; set; }
-        public bool IsDonatable { get; set; }
         public bool IsSwappable { get; set; }
         public int AvailableQuantity { get; set; }
         public AvailabilityStatus AvailabilityStatus { get; set; }
@@ -68,7 +66,6 @@ namespace ShelfLife.DTOs
         public decimal? MaxPrice { get; set; }
         public string? City { get; set; }
         public bool? IsSellable { get; set; }
-        public bool? IsDonatable { get; set; }
         public bool? IsSwappable { get; set; }
         public int PageNumber { get; set; } = 1;
         public int PageSize { get; set; } = 20;
@@ -109,7 +106,6 @@ namespace ShelfLife.DTOs
         public string? City { get; set; }
 
         public bool IsSellable { get; set; }
-        public bool IsDonatable { get; set; }
         public bool IsSwappable { get; set; }
 
         [Range(1, 1000)]
@@ -152,7 +148,6 @@ namespace ShelfLife.DTOs
         public string? City { get; set; }
 
         public bool IsSellable { get; set; }
-        public bool IsDonatable { get; set; }
         public bool IsSwappable { get; set; }
 
         [Range(1, 1000)]

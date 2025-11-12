@@ -139,7 +139,6 @@ namespace ShelfLife.Controllers
                     : 0,
                 SaleDeliveries = completedDeliveries.Count(d => d.OrderType == OrderType.SALE),
                 SwapDeliveries = completedDeliveries.Count(d => d.OrderType == OrderType.SWAP),
-                DonationDeliveries = completedDeliveries.Count(d => d.OrderType == OrderType.DONATION),
                 ThisMonthEarnings = CalculateMonthlyEarnings(completedDeliveries)
             };
 
@@ -192,13 +191,10 @@ namespace ShelfLife.Controllers
             var firstDayOfMonth = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
             var thisMonthDeliveries = deliveries.Where(d => d.DeliveredAt >= firstDayOfMonth);
 
-            decimal totalFees = thisMonthDeliveries.Sum(d => d.DeliveryFee);
-
-            // Apply the same logic as in DeliveryRepository
             decimal earnings = 0;
             foreach (var delivery in thisMonthDeliveries)
             {
-                if (delivery.OrderType == OrderType.SALE || delivery.OrderType == OrderType.DONATION)
+                if (delivery.OrderType == OrderType.SALE)
                 {
                     earnings += delivery.DeliveryFee * 0.8m; // 80% to delivery person
                 }

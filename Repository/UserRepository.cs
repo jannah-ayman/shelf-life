@@ -99,11 +99,10 @@ namespace ShelfLife.Repository
                 TotalListings = listings.Count,
                 ActiveListings = listings.Count(l => l.AvailableQuantity > 0),
                 SoldItems = listings.Count(l => l.AvailabilityStatus == AvailabilityStatus.Sold),
-                DonatedItems = listings.Count(l => l.AvailabilityStatus == AvailabilityStatus.Donated),
                 SwappedItems = listings.Count(l => l.AvailabilityStatus == AvailabilityStatus.Swapped),
                 IncomingOrders = incomingOrders.Count,
                 OutgoingOrders = outgoingOrders.Count,
-                PendingOrders = incomingOrders.Count(o => o.Status == OrderStatus.PENDING || o.Status == OrderStatus.NEGOTIATING),
+                PendingOrders = incomingOrders.Count(o => o.Status == OrderStatus.NEGOTIATING),
                 CompletedOrders = incomingOrders.Count(o => o.Status == OrderStatus.COMPLETED),
                 TotalEarnings = incomingOrders
                     .Where(o => o.Status == OrderStatus.COMPLETED && o.OrderType == OrderType.SALE)
@@ -112,5 +111,4 @@ namespace ShelfLife.Repository
             };
         }
     }
-
 }

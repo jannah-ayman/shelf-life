@@ -13,5 +13,9 @@ namespace ShelfLife.Repository.Base
         Task<bool> DeleteListingAsync(int listingId);
         Task<bool> UserOwnsListingAsync(int userId, int listingId);
         Task<int> GetTotalListingsCountAsync(BookListingFilterDTO? filter = null);
+
+        // NEW: Added for order creation logic
+        Task UpdateBookListingAsync(BookListing listing);
+        Task<BookListing?> GetBookListingByIdAsync(int id);
     }
 }

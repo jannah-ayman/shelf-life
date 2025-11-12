@@ -19,6 +19,7 @@ namespace ShelfLife.DTOs
         public int TotalListings { get; set; }
         public int TotalOrders { get; set; }
     }
+
     // DTO for updating user profile
     public class UpdateUserProfileDTO
     {
@@ -43,12 +44,12 @@ namespace ShelfLife.DTOs
         [MaxLength(500)]
         public string? ProfilePhotoURL { get; set; }
     }
+
     public class UserDashboardStatsDTO
     {
         public int TotalListings { get; set; }
         public int ActiveListings { get; set; }
         public int SoldItems { get; set; }
-        public int DonatedItems { get; set; }
         public int SwappedItems { get; set; }
         public int IncomingOrders { get; set; }
         public int OutgoingOrders { get; set; }

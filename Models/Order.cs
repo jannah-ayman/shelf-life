@@ -6,20 +6,18 @@ namespace ShelfLife.Models
     public enum OrderType
     {
         SALE,
-        SWAP,
-        DONATION
+        SWAP
     }
 
     public enum OrderStatus
     {
-        PENDING,
-        NEGOTIATING,
-        ACCEPTED,
-        REJECTED,
-        CANCELLED,
-        DELIVERY_ASSIGNED,  // NEW: Delivery person assigned,
-        DELIVERING,
-        COMPLETED,
+        NEGOTIATING,      // For swaps only
+        ACCEPTED,         // Auto for sales, or when swap is accepted
+        REJECTED,         // When swap is rejected
+        CANCELLED,        // User cancelled
+        DELIVERY_ASSIGNED,// Delivery person assigned
+        DELIVERING,       // Order is being delivered
+        COMPLETED         // Order completed
     }
 
     public class Order

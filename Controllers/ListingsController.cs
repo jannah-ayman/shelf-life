@@ -64,7 +64,6 @@ namespace ShelfLife.Controllers
             [FromQuery] decimal? maxPrice,
             [FromQuery] string? city,
             [FromQuery] bool? isSellable,
-            [FromQuery] bool? isDonatable,
             [FromQuery] bool? isSwappable,
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 20,
@@ -79,7 +78,6 @@ namespace ShelfLife.Controllers
                 MaxPrice = maxPrice,
                 City = city,
                 IsSellable = isSellable,
-                IsDonatable = isDonatable,
                 IsSwappable = isSwappable,
                 PageNumber = pageNumber,
                 PageSize = pageSize,
@@ -120,7 +118,6 @@ namespace ShelfLife.Controllers
                     maxPrice = filter.MaxPrice,
                     city = filter.City,
                     isSellable = filter.IsSellable,
-                    isDonatable = filter.IsDonatable,
                     isSwappable = filter.IsSwappable,
                     sortBy = filter.SortBy,
                     sortDescending = filter.SortDescending
@@ -133,8 +130,6 @@ namespace ShelfLife.Controllers
         [HttpGet("cities")]
         public async Task<ActionResult<IEnumerable<string>>> GetAvailableCities()
         {
-            // This would need a method in the repository
-            // For now, return a simple implementation
             return Ok(new[] { "Cairo", "Alexandria", "Giza", "Assiut" });
         }
     }

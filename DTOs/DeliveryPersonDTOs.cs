@@ -58,7 +58,6 @@ namespace ShelfLife.DTOs
         public decimal AverageEarningsPerDelivery { get; set; }
         public int SaleDeliveries { get; set; }
         public int SwapDeliveries { get; set; }
-        public int DonationDeliveries { get; set; }
         public decimal ThisMonthEarnings { get; set; }
     }
 }

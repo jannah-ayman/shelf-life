@@ -17,8 +17,8 @@ namespace ShelfLife.Models
     {
         Available,
         Sold,
-        Donated,
         Swapped
+        // Donated removed
     }
 
     public class BookListing
@@ -48,7 +48,7 @@ namespace ShelfLife.Models
 
         public BookCondition Condition { get; set; }
 
-        // Nullable: not needed for swaps/donations
+        // Nullable: not needed for swaps
         [Column(TypeName = "decimal(18,2)")]
         public decimal? Price { get; set; }
 
@@ -65,10 +65,9 @@ namespace ShelfLife.Models
         public string? City { get; set; }
 
         public bool IsSellable { get; set; }
-        public bool IsDonatable { get; set; }
+        // IsDonatable removed
         public bool IsSwappable { get; set; }
 
-        // Keep as required ints (defaults to 0) — avoids null checks in business logic.
         public int Quantity { get; set; } = 1;
         public int AvailableQuantity { get; set; }
 

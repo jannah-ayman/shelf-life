@@ -53,9 +53,6 @@ namespace ShelfLife.Repository
                 if (filter.IsSellable.HasValue)
                     query = query.Where(b => b.IsSellable == filter.IsSellable.Value);
 
-                if (filter.IsDonatable.HasValue)
-                    query = query.Where(b => b.IsDonatable == filter.IsDonatable.Value);
-
                 if (filter.IsSwappable.HasValue)
                     query = query.Where(b => b.IsSwappable == filter.IsSwappable.Value);
 
@@ -94,7 +91,6 @@ namespace ShelfLife.Repository
                 CategoryName = b.Category != null ? b.Category.Name : null,
                 City = b.City,
                 IsSellable = b.IsSellable,
-                IsDonatable = b.IsDonatable,
                 IsSwappable = b.IsSwappable,
                 AvailableQuantity = b.AvailableQuantity,
                 AvailabilityStatus = b.AvailabilityStatus,
@@ -127,7 +123,6 @@ namespace ShelfLife.Repository
                     CategoryID = b.CategoryID,
                     City = b.City,
                     IsSellable = b.IsSellable,
-                    IsDonatable = b.IsDonatable,
                     IsSwappable = b.IsSwappable,
                     Quantity = b.Quantity,
                     AvailableQuantity = b.AvailableQuantity,
@@ -163,7 +158,6 @@ namespace ShelfLife.Repository
                     CategoryName = b.Category != null ? b.Category.Name : null,
                     City = b.City,
                     IsSellable = b.IsSellable,
-                    IsDonatable = b.IsDonatable,
                     IsSwappable = b.IsSwappable,
                     AvailableQuantity = b.AvailableQuantity,
                     AvailabilityStatus = b.AvailabilityStatus,
@@ -243,14 +237,24 @@ namespace ShelfLife.Repository
                 if (filter.IsSellable.HasValue)
                     query = query.Where(b => b.IsSellable == filter.IsSellable.Value);
 
-                if (filter.IsDonatable.HasValue)
-                    query = query.Where(b => b.IsDonatable == filter.IsDonatable.Value);
-
                 if (filter.IsSwappable.HasValue)
                     query = query.Where(b => b.IsSwappable == filter.IsSwappable.Value);
             }
 
             return await query.CountAsync();
+        }
+
+        public async Task UpdateBookListingAsync(BookListing listing)
+        {
+            _context.BookListings.Update(listing);
+            await _context.SaveChangesAsync();
+        }
+
+        public async Task<BookListing?> GetBookListingByIdAsync(int id)
+        {
+            return await _context.BookListings
+                .Include(b => b.User)
+                .FirstOrDefaultAsync(b => b.BookListingID == id);
         }
     }
 }

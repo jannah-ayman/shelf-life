@@ -150,16 +150,17 @@ namespace ShelfLife.Repository
                 DropoffAddress = order.Buyer.Address ?? "",
                 DropoffPhone = order.Buyer.Phone ?? "",
                 DeliveryFee = order.DeliveryFee.Value,
-                Status = DeliveryStatus.ASSIGNED  // Delivery status = ASSIGNED
+                Status = DeliveryStatus.ASSIGNED
             };
 
             _context.Deliveries.Add(delivery);
-            order.Status = OrderStatus.DELIVERY_ASSIGNED;  // Order status = DELIVERY_ASSIGNED
+            order.Status = OrderStatus.DELIVERY_ASSIGNED;
 
             await _context.SaveChangesAsync();
 
             return await GetDeliveryByIdAsync(delivery.DeliveryID);
         }
+
         // When delivery person picks up: Order = DELIVERING, Delivery = PICKED_UP
         public async Task<DeliveryDetailDTO?> UpdateDeliveryStatusAsync(int deliveryId, DeliveryStatus newStatus)
         {
@@ -175,7 +176,7 @@ namespace ShelfLife.Repository
             if (newStatus == DeliveryStatus.PICKED_UP)
             {
                 delivery.PickedUpAt = DateTime.UtcNow;
-                delivery.Order.Status = OrderStatus.DELIVERING;  // Order status = DELIVERING
+                delivery.Order.Status = OrderStatus.DELIVERING;
             }
 
             await _context.SaveChangesAsync();
@@ -192,7 +193,6 @@ namespace ShelfLife.Repository
             if (delivery == null || delivery.Status != DeliveryStatus.PICKED_UP)
                 return null;
 
-            // Delivery status stays PICKED_UP, only order status changes to DELIVERING
             delivery.Order.Status = OrderStatus.DELIVERING;
 
             await _context.SaveChangesAsync();
@@ -229,7 +229,6 @@ namespace ShelfLife.Repository
             return await GetDeliveryByIdAsync(deliveryId);
         }
 
-
         public async Task<DeliveryDetailDTO?> ConfirmDeliveryByBuyerAsync(int deliveryId)
         {
             var delivery = await _context.Deliveries
@@ -257,7 +256,6 @@ namespace ShelfLife.Repository
             return await GetDeliveryByIdAsync(deliveryId);
         }
 
-
         public async Task<bool> CancelDeliveryAsync(int deliveryId)
         {
             var delivery = await _context.Deliveries
@@ -276,7 +274,6 @@ namespace ShelfLife.Repository
             await _context.SaveChangesAsync();
             return true;
         }
-
 
         public async Task<DeliveryPersonStatsDTO> GetDeliveryPersonStatsAsync(int deliveryPersonId)
         {
@@ -355,15 +352,10 @@ namespace ShelfLife.Repository
                 // For sales: 80% to delivery person, 20% to platform
                 deliveryPersonEarnings = delivery.DeliveryFee * (1 - PLATFORM_FEE_PERCENTAGE);
             }
-            else if (order.OrderType == OrderType.SWAP)
+            else // SWAP
             {
                 // For swaps: split fee 50/50 between platform and delivery person
                 deliveryPersonEarnings = delivery.DeliveryFee * 0.5m;
-            }
-            else // DONATION
-            {
-                // For donations: 80% to delivery person, 20% to platform
-                deliveryPersonEarnings = delivery.DeliveryFee * (1 - PLATFORM_FEE_PERCENTAGE);
             }
 
             // Update delivery person earnings
@@ -382,9 +374,6 @@ namespace ShelfLife.Repository
             _context.Payments.Add(payment);
             await _context.SaveChangesAsync();
         }
-
-        // Replace the MapToDeliveryDetailDTO method at the bottom of DeliveryRepository.cs
-        // with this corrected version:
 
         private static DeliveryDetailDTO MapToDeliveryDetailDTO(Delivery d)
         {
@@ -411,7 +400,6 @@ namespace ShelfLife.Repository
                 BuyerName = d.Order.Buyer.Name,
                 DeliveryFee = d.DeliveryFee,
                 EstimatedDistance = null,
-                // ✅ FIX: Use the actual boolean fields from the Delivery entity
                 DeliveryPersonConfirmed = d.DeliveryPersonConfirmed,
                 BuyerConfirmed = d.BuyerConfirmed,
                 PickedUpAt = d.PickedUpAt,

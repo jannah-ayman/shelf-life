@@ -24,7 +24,7 @@ namespace ShelfLife.Controllers
             _orderRepo = orderRepo;
         }
 
-        // GET: api/UserDashboard/{userId}/profile
+        // GET: api/User/{userId}/profile
         [HttpGet("{userId}/profile")]
         public async Task<ActionResult<UserProfileDTO>> GetUserProfile(int userId)
         {
@@ -35,7 +35,7 @@ namespace ShelfLife.Controllers
             return Ok(profile);
         }
 
-        // PUT: api/UserDashboard/{userId}/profile
+        // PUT: api/User/{userId}/profile
         [HttpPut("{userId}/profile")]
         public async Task<ActionResult<UserProfileDTO>> UpdateUserProfile(int userId, [FromBody] UpdateUserProfileDTO updateDto)
         {
@@ -62,7 +62,7 @@ namespace ShelfLife.Controllers
             return Ok(profile);
         }
 
-        // DELETE: api/UserDashboard/{userId}
+        // DELETE: api/User/{userId}
         [HttpDelete("{userId}")]
         public async Task<ActionResult> DeleteUserAccount(int userId)
         {
@@ -77,17 +77,15 @@ namespace ShelfLife.Controllers
             return Ok(new { message = "Account deleted successfully" });
         }
 
-        // POST: api/UserDashboard/{userId}/change-password
+        // POST: api/User/{userId}/change-password
         [HttpPost("{userId}/change-password")]
         public async Task<ActionResult> ChangePassword(int userId, [FromBody] ChangePasswordDTO passwordDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // NOTE: In production, implement proper password hashing (BCrypt, etc.)
-            // This is simplified for demonstration
-            var currentPasswordHash = passwordDto.CurrentPassword; // Should be hashed
-            var newPasswordHash = passwordDto.NewPassword; // Should be hashed
+            var currentPasswordHash = passwordDto.CurrentPassword;
+            var newPasswordHash = passwordDto.NewPassword;
 
             var success = await _userRepo.ChangePasswordAsync(userId, currentPasswordHash, newPasswordHash);
             if (!success)
@@ -96,7 +94,7 @@ namespace ShelfLife.Controllers
             return Ok(new { message = "Password changed successfully" });
         }
 
-        // GET: api/UserDashboard/{userId}/stats
+        // GET: api/User/{userId}/stats
         [HttpGet("{userId}/stats")]
         public async Task<ActionResult<UserDashboardStatsDTO>> GetDashboardStats(int userId)
         {
@@ -104,7 +102,7 @@ namespace ShelfLife.Controllers
             return Ok(stats);
         }
 
-        // GET: api/UserDashboard/{userId}/listings
+        // GET: api/User/{userId}/listings
         [HttpGet("{userId}/listings")]
         public async Task<ActionResult<IEnumerable<BookListingDisplayDTO>>> GetUserListings(int userId)
         {
@@ -112,7 +110,7 @@ namespace ShelfLife.Controllers
             return Ok(listings);
         }
 
-        // GET: api/UserDashboard/{userId}/listings/{listingId}
+        // GET: api/User/{userId}/listings/{listingId}
         [HttpGet("{userId}/listings/{listingId}")]
         public async Task<ActionResult<BookListingDetailDTO>> GetListingDetail(int userId, int listingId)
         {
@@ -127,7 +125,7 @@ namespace ShelfLife.Controllers
             return Ok(listing);
         }
 
-        // POST: api/UserDashboard/{userId}/listings
+        // POST: api/User/{userId}/listings
         [HttpPost("{userId}/listings")]
         public async Task<ActionResult<BookListingDetailDTO>> CreateListing(int userId, [FromBody] CreateBookListingDTO createDto)
         {
@@ -149,8 +147,8 @@ namespace ShelfLife.Controllers
                 return BadRequest(new { message = "Normal users can only list a quantity of 1." });
 
             // Validate: at least one transaction type
-            if (!createDto.IsSellable && !createDto.IsDonatable && !createDto.IsSwappable)
-                return BadRequest(new { message = "At least one transaction type (Sellable, Donatable, Swappable) must be enabled" });
+            if (!createDto.IsSellable && !createDto.IsSwappable)
+                return BadRequest(new { message = "At least one transaction type (Sellable or Swappable) must be enabled" });
 
             // Validate: price required for sellable items
             if (createDto.IsSellable && !createDto.Price.HasValue)
@@ -170,7 +168,6 @@ namespace ShelfLife.Controllers
                 PhotoURLs = createDto.PhotoURLs,
                 City = createDto.City ?? user.City,
                 IsSellable = createDto.IsSellable,
-                IsDonatable = createDto.IsDonatable,
                 IsSwappable = createDto.IsSwappable,
                 Quantity = createDto.Quantity,
                 AvailableQuantity = createDto.Quantity,
@@ -188,7 +185,7 @@ namespace ShelfLife.Controllers
                 listingDetail);
         }
 
-        // PUT: api/UserDashboard/{userId}/listings/{listingId}
+        // PUT: api/User/{userId}/listings/{listingId}
         [HttpPut("{userId}/listings/{listingId}")]
         public async Task<ActionResult<BookListingDetailDTO>> UpdateListing(int userId, int listingId, [FromBody] UpdateBookListingDTO updateDto)
         {
@@ -202,12 +199,10 @@ namespace ShelfLife.Controllers
             if (!ownsListing)
                 return Forbid();
 
-            // Get the user first
             var listingEntity = await _userRepo.GetUserByIdAsync(userId);
             if (listingEntity == null)
                 return NotFound(new { message = "User not found" });
 
-            // Get the listing from the user's listings
             var listing = listingEntity.BookListings.FirstOrDefault(l => l.BookListingID == listingId);
             if (listing == null)
                 return NotFound(new { message = "Listing not found" });
@@ -220,7 +215,7 @@ namespace ShelfLife.Controllers
                 return BadRequest(new { message = "Normal users can only list a quantity of 1." });
 
             // Validate: at least one transaction type must be enabled
-            if (!updateDto.IsSellable && !updateDto.IsDonatable && !updateDto.IsSwappable)
+            if (!updateDto.IsSellable && !updateDto.IsSwappable)
                 return BadRequest(new { message = "At least one transaction type must be enabled" });
 
             // Validate: price is required for sellable items
@@ -239,7 +234,6 @@ namespace ShelfLife.Controllers
             listing.PhotoURLs = updateDto.PhotoURLs;
             listing.City = updateDto.City;
             listing.IsSellable = updateDto.IsSellable;
-            listing.IsDonatable = updateDto.IsDonatable;
             listing.IsSwappable = updateDto.IsSwappable;
             listing.Quantity = updateDto.Quantity;
             listing.AvailabilityStatus = updateDto.AvailabilityStatus;
@@ -256,8 +250,7 @@ namespace ShelfLife.Controllers
             return Ok(listingDetail);
         }
 
-
-        // DELETE: api/UserDashboard/{userId}/listings/{listingId}
+        // DELETE: api/User/{userId}/listings/{listingId}
         [HttpDelete("{userId}/listings/{listingId}")]
         public async Task<ActionResult> DeleteListing(int userId, int listingId)
         {
@@ -272,7 +265,7 @@ namespace ShelfLife.Controllers
             return Ok(new { message = "Listing deleted successfully" });
         }
 
-        // GET: api/UserDashboard/{userId}/orders/incoming
+        // GET: api/User/{userId}/orders/incoming
         [HttpGet("{userId}/orders/incoming")]
         public async Task<ActionResult<IEnumerable<OrderDisplayDTO>>> GetIncomingOrders(int userId)
         {
@@ -280,7 +273,7 @@ namespace ShelfLife.Controllers
             return Ok(orders);
         }
 
-        // GET: api/UserDashboard/{userId}/orders/outgoing
+        // GET: api/User/{userId}/orders/outgoing
         [HttpGet("{userId}/orders/outgoing")]
         public async Task<ActionResult<IEnumerable<OrderDisplayDTO>>> GetOutgoingOrders(int userId)
         {
@@ -288,7 +281,7 @@ namespace ShelfLife.Controllers
             return Ok(orders);
         }
 
-        // GET: api/UserDashboard/{userId}/orders/{orderId}
+        // GET: api/User/{userId}/orders/{orderId}
         [HttpGet("{userId}/orders/{orderId}")]
         public async Task<ActionResult<OrderDisplayDTO>> GetOrderDetail(int userId, int orderId)
         {
