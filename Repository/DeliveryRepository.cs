@@ -383,6 +383,9 @@ namespace ShelfLife.Repository
             await _context.SaveChangesAsync();
         }
 
+        // Replace the MapToDeliveryDetailDTO method at the bottom of DeliveryRepository.cs
+        // with this corrected version:
+
         private static DeliveryDetailDTO MapToDeliveryDetailDTO(Delivery d)
         {
             return new DeliveryDetailDTO
@@ -408,8 +411,9 @@ namespace ShelfLife.Repository
                 BuyerName = d.Order.Buyer.Name,
                 DeliveryFee = d.DeliveryFee,
                 EstimatedDistance = null,
-                DeliveryPersonConfirmed = d.DeliveredAt.HasValue,
-                BuyerConfirmed = d.Status == DeliveryStatus.DELIVERED,
+                // ✅ FIX: Use the actual boolean fields from the Delivery entity
+                DeliveryPersonConfirmed = d.DeliveryPersonConfirmed,
+                BuyerConfirmed = d.BuyerConfirmed,
                 PickedUpAt = d.PickedUpAt,
                 DeliveredAt = d.DeliveredAt,
                 CreatedAt = d.Order.CreatedAt
