@@ -10,6 +10,9 @@ namespace ShelfLife.Repository.Base
         Task<IEnumerable<OrderDisplayDTO>> GetUserOutgoingOrdersAsync(int userId);
         Task<OrderDisplayDTO?> GetOrderByIdAsync(int orderId);
 
+        // Payment breakdown
+        Task<PaymentBreakdownDTO?> GetPaymentBreakdownAsync(int orderId);
+
         // Basic CRUD operations
         Task<Order?> CreateOrderAsync(Order order);
         Task<Order?> UpdateOrderAsync(Order order);

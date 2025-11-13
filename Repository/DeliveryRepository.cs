@@ -8,7 +8,7 @@ namespace ShelfLife.Repository
     public class DeliveryRepository : IDeliveryRepository
     {
         private readonly DBcontext _context;
-        private const decimal PLATFORM_FEE_PERCENTAGE = 0.20m; // 20% platform fee
+        private const decimal PLATFORM_FEE_PERCENTAGE = 0.20m; // 20% platform fee for delivery
 
         public DeliveryRepository(DBcontext context)
         {
@@ -122,7 +122,6 @@ namespace ShelfLife.Repository
                 .FirstOrDefaultAsync();
         }
 
-        // When delivery person accepts order: Order = DELIVERY_ASSIGNED, Delivery = ASSIGNED
         public async Task<DeliveryDetailDTO?> CreateDeliveryForOrderAsync(int orderId, int deliveryPersonId)
         {
             var order = await _context.Orders
@@ -161,7 +160,6 @@ namespace ShelfLife.Repository
             return await GetDeliveryByIdAsync(delivery.DeliveryID);
         }
 
-        // When delivery person picks up: Order = DELIVERING, Delivery = PICKED_UP
         public async Task<DeliveryDetailDTO?> UpdateDeliveryStatusAsync(int deliveryId, DeliveryStatus newStatus)
         {
             var delivery = await _context.Deliveries
@@ -200,11 +198,12 @@ namespace ShelfLife.Repository
             return await GetDeliveryByIdAsync(deliveryId);
         }
 
-        // When delivery person delivers and receives payment: Order = COMPLETED, Delivery = DELIVERED
         public async Task<DeliveryDetailDTO?> ConfirmDeliveryByPersonAsync(int deliveryId)
         {
             var delivery = await _context.Deliveries
                 .Include(d => d.Order)
+                    .ThenInclude(o => o.Listing)
+                .Include(d => d.Order.Negotiations)
                 .Include(d => d.DeliveryPerson)
                 .FirstOrDefaultAsync(d => d.DeliveryID == deliveryId);
 
@@ -220,12 +219,7 @@ namespace ShelfLife.Repository
             // Only mark as fully delivered if buyer has also confirmed
             if (delivery.BuyerConfirmed)
             {
-                delivery.Status = DeliveryStatus.DELIVERED;
-                delivery.Order.Status = OrderStatus.COMPLETED;
-                delivery.Order.CompletedAt = DateTime.UtcNow;
-                delivery.DeliveredAt = DateTime.UtcNow;
-
-                await ProcessDeliveryPaymentAsync(delivery);
+                await CompleteDeliveryAsync(delivery);
             }
 
             await _context.SaveChangesAsync();
@@ -236,6 +230,8 @@ namespace ShelfLife.Repository
         {
             var delivery = await _context.Deliveries
                 .Include(d => d.Order)
+                    .ThenInclude(o => o.Listing)
+                .Include(d => d.Order.Negotiations)
                 .Include(d => d.DeliveryPerson)
                 .FirstOrDefaultAsync(d => d.DeliveryID == deliveryId);
 
@@ -250,16 +246,47 @@ namespace ShelfLife.Repository
             // Only mark as fully delivered if delivery person already confirmed
             if (delivery.DeliveryPersonConfirmed)
             {
-                delivery.Status = DeliveryStatus.DELIVERED;
-                delivery.Order.Status = OrderStatus.COMPLETED;
-                delivery.Order.CompletedAt = DateTime.UtcNow;
-                delivery.DeliveredAt = DateTime.UtcNow;
-
-                await ProcessDeliveryPaymentAsync(delivery);
+                await CompleteDeliveryAsync(delivery);
             }
 
             await _context.SaveChangesAsync();
             return await GetDeliveryByIdAsync(deliveryId);
+        }
+
+        private async Task CompleteDeliveryAsync(Delivery delivery)
+        {
+            delivery.Status = DeliveryStatus.DELIVERED;
+            delivery.Order.Status = OrderStatus.COMPLETED;
+            delivery.Order.CompletedAt = DateTime.UtcNow;
+            delivery.DeliveredAt = DateTime.UtcNow;
+
+            // Update listing status if quantity reaches 0
+            var listing = delivery.Order.Listing;
+            if (listing.AvailableQuantity == 0)
+            {
+                listing.AvailabilityStatus = delivery.Order.OrderType == OrderType.SALE
+                    ? AvailabilityStatus.Sold
+                    : AvailabilityStatus.Swapped;
+                _context.BookListings.Update(listing);
+            }
+
+            // For swaps, also update the offered listing
+            if (delivery.Order.OrderType == OrderType.SWAP)
+            {
+                var negotiation = delivery.Order.Negotiations.FirstOrDefault();
+                if (negotiation?.OfferedListingID != null)
+                {
+                    var offeredListing = await _context.BookListings.FindAsync(negotiation.OfferedListingID);
+                    if (offeredListing != null && offeredListing.AvailableQuantity == 0)
+                    {
+                        offeredListing.AvailabilityStatus = AvailabilityStatus.Swapped;
+                        _context.BookListings.Update(offeredListing);
+                    }
+                }
+            }
+
+            // Process payment
+            await ProcessDeliveryPaymentAsync(delivery);
         }
 
         public async Task<bool> CancelDeliveryAsync(int deliveryId)
@@ -332,14 +359,13 @@ namespace ShelfLife.Repository
 
         private static decimal CalculateDeliveryFee(string? pickupCity, string? dropoffCity)
         {
-            // Simple fee calculation based on same city or different city
             if (string.IsNullOrEmpty(pickupCity) || string.IsNullOrEmpty(dropoffCity))
-                return 50m; // Default fee
+                return 50m;
 
             if (pickupCity.Equals(dropoffCity, StringComparison.OrdinalIgnoreCase))
-                return 30m; // Same city
+                return 30m;
 
-            return 80m; // Different cities
+            return 80m;
         }
 
         private async Task ProcessDeliveryPaymentAsync(Delivery delivery)
@@ -350,34 +376,22 @@ namespace ShelfLife.Repository
             if (deliveryPerson == null)
                 return;
 
-            // Calculate delivery person earnings
-            decimal deliveryPersonEarnings;
-
-            if (order.OrderType == OrderType.SALE)
-            {
-                // For sales: 80% to delivery person, 20% to platform
-                deliveryPersonEarnings = delivery.DeliveryFee * (1 - PLATFORM_FEE_PERCENTAGE);
-            }
-            else // SWAP
-            {
-                // For swaps: split fee 50/50 between platform and delivery person
-                deliveryPersonEarnings = delivery.DeliveryFee * 0.5m;
-            }
+            // Calculate delivery person earnings: 80% for both SALE and SWAP
+            decimal deliveryPersonEarnings = delivery.DeliveryFee * (1 - PLATFORM_FEE_PERCENTAGE);
 
             // Update delivery person earnings
             deliveryPerson.TotalEarnings += deliveryPersonEarnings;
             deliveryPerson.TotalDeliveries += 1;
 
-            // Create payment record
-            var payment = new Payment
+            // Update payment status
+            var payment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderID == order.OrderID);
+            if (payment != null)
             {
-                OrderID = order.OrderID,
-                Amount = (order.Price ?? 0) + delivery.DeliveryFee,
-                Status = PaymentStatus.PENDING,
-                PaidAt = DateTime.UtcNow
-            };
+                payment.Status = PaymentStatus.COMPLETED;
+                payment.PaidAt = DateTime.UtcNow;
+                _context.Payments.Update(payment);
+            }
 
-            _context.Payments.Add(payment);
             await _context.SaveChangesAsync();
         }
 

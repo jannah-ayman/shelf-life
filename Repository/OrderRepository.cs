@@ -8,10 +8,79 @@ namespace ShelfLife.Repository
     public class OrderRepository : IOrderRepository
     {
         private readonly DBcontext _context;
+        private const decimal NORMAL_USER_PLATFORM_FEE = 0.05m; // 5%
+        private const decimal BUSINESS_USER_PLATFORM_FEE = 0.10m; // 10%
 
         public OrderRepository(DBcontext context)
         {
             _context = context;
+        }
+
+        // Payment breakdown calculation
+        public async Task<PaymentBreakdownDTO?> GetPaymentBreakdownAsync(int orderId)
+        {
+            var order = await _context.Orders
+                .Include(o => o.Listing)
+                    .ThenInclude(l => l.User)
+                .Include(o => o.Buyer)
+                .FirstOrDefaultAsync(o => o.OrderID == orderId);
+
+            if (order == null)
+                return null;
+
+            var breakdown = new PaymentBreakdownDTO
+            {
+                OrderID = orderId,
+                OrderType = order.OrderType,
+                SellerUserType = order.Listing.User.UserType,
+                Quantity = order.Quantity
+            };
+
+            if (order.OrderType == OrderType.SALE)
+            {
+                // SALE order calculations
+                decimal itemPrice = order.Price ?? 0;
+                decimal platformFeePercentage = order.Listing.User.UserType == UserType.NORMAL_USER
+                    ? NORMAL_USER_PLATFORM_FEE
+                    : BUSINESS_USER_PLATFORM_FEE;
+
+                breakdown.ItemPrice = itemPrice / order.Quantity;
+                breakdown.SubTotal = itemPrice;
+                breakdown.PlatformFeePercentage = platformFeePercentage * 100;
+                breakdown.PlatformFee = itemPrice * platformFeePercentage;
+                breakdown.DeliveryFee = order.DeliveryFee ?? 0;
+                breakdown.TotalAmount = itemPrice + breakdown.DeliveryFee;
+                breakdown.BuyerPays = breakdown.TotalAmount;
+                breakdown.SellerReceives = itemPrice - breakdown.PlatformFee;
+                breakdown.DeliveryPersonReceives = breakdown.DeliveryFee * 0.80m; // 80% to delivery person
+                breakdown.PlatformReceives = breakdown.PlatformFee + (breakdown.DeliveryFee * 0.20m);
+
+                breakdown.PaymentSummary = $"Buyer pays: {breakdown.BuyerPays:C} " +
+                    $"(Item: {breakdown.SubTotal:C} + Delivery: {breakdown.DeliveryFee:C}). " +
+                    $"Seller receives: {breakdown.SellerReceives:C} after {breakdown.PlatformFeePercentage}% platform fee.";
+            }
+            else // SWAP
+            {
+                // SWAP order calculations
+                breakdown.ItemPrice = 0;
+                breakdown.SubTotal = 0;
+                breakdown.PlatformFeePercentage = 0;
+                breakdown.PlatformFee = 0;
+                breakdown.DeliveryFee = order.DeliveryFee ?? 0;
+                breakdown.BuyerDeliveryShare = breakdown.DeliveryFee / 2;
+                breakdown.SellerDeliveryShare = breakdown.DeliveryFee / 2;
+                breakdown.TotalAmount = breakdown.DeliveryFee;
+                breakdown.BuyerPays = breakdown.BuyerDeliveryShare.Value;
+                breakdown.SellerReceives = 0; // No money for seller in swap
+                breakdown.DeliveryPersonReceives = breakdown.DeliveryFee * 0.80m; // 80% to delivery person
+                breakdown.PlatformReceives = breakdown.DeliveryFee * 0.20m; // 20% to platform
+
+                breakdown.PaymentSummary = $"Both parties split delivery fee: {breakdown.DeliveryFee:C}. " +
+                    $"Each pays: {breakdown.BuyerDeliveryShare:C}. " +
+                    $"Delivery person receives: {breakdown.DeliveryPersonReceives:C}.";
+            }
+
+            return breakdown;
         }
 
         // Existing retrieval methods
@@ -129,7 +198,7 @@ namespace ShelfLife.Repository
             return await _context.Users.FindAsync(userId);
         }
 
-        // Sale order creation - Auto-accepted
+        // Sale order creation - Auto-accepted with correct platform fee
         public async Task<Order?> CreateSaleOrderAsync(int buyerId, CreateSaleOrderDTO dto)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -149,11 +218,14 @@ namespace ShelfLife.Repository
                 if (listing.UserID == buyerId)
                     return null;
 
-                // Calculate fees
+                // Calculate fees based on seller type
                 decimal basePrice = listing.Price.Value * dto.Quantity;
-                decimal platformFee = basePrice * 0.05m; // 5% platform fee
+                decimal platformFeePercentage = listing.User.UserType == UserType.NORMAL_USER
+                    ? NORMAL_USER_PLATFORM_FEE
+                    : BUSINESS_USER_PLATFORM_FEE;
+                decimal platformFee = basePrice * platformFeePercentage;
                 decimal deliveryFee = !string.IsNullOrWhiteSpace(dto.DropoffAddress) ? 50.00m : 0m;
-                decimal totalPrice = basePrice + platformFee + deliveryFee;
+                decimal totalPrice = basePrice + deliveryFee;
 
                 // Create order with ACCEPTED status (auto-accepted for sales)
                 var order = new Order
@@ -163,7 +235,7 @@ namespace ShelfLife.Repository
                     BuyerID = buyerId,
                     Price = basePrice,
                     DeliveryFee = deliveryFee,
-                    Status = OrderStatus.ACCEPTED, // Auto-accepted
+                    Status = OrderStatus.ACCEPTED,
                     Quantity = dto.Quantity,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -228,7 +300,7 @@ namespace ShelfLife.Repository
                 if (requestedListing.UserID == buyerId)
                     return null;
 
-                // Calculate delivery fee
+                // Calculate delivery fee (split 50/50 between parties)
                 decimal deliveryFee = !string.IsNullOrWhiteSpace(dto.DropoffAddress) ? 50.00m : 0m;
 
                 // Create order with NEGOTIATING status
@@ -239,7 +311,7 @@ namespace ShelfLife.Repository
                     BuyerID = buyerId,
                     Price = null,
                     DeliveryFee = deliveryFee,
-                    Status = OrderStatus.NEGOTIATING, // Starts with NEGOTIATING
+                    Status = OrderStatus.NEGOTIATING,
                     Quantity = dto.Quantity,
                     CreatedAt = DateTime.UtcNow
                 };
@@ -297,6 +369,16 @@ namespace ShelfLife.Repository
                 {
                     // Accept the swap
                     order.Status = OrderStatus.ACCEPTED;
+
+                    // Create payment record for tracking
+                    var payment = new Payment
+                    {
+                        OrderID = order.OrderID,
+                        Amount = order.DeliveryFee ?? 0,
+                        Status = PaymentStatus.PENDING,
+                        PaidAt = DateTime.UtcNow
+                    };
+                    _context.Payments.Add(payment);
                 }
                 else
                 {

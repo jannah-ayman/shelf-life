@@ -7,7 +7,7 @@ namespace ShelfLife
 {
     public class Program
     {
-        public static void Main(string[] args)
+        public static async Task Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
 
@@ -26,6 +26,7 @@ namespace ShelfLife
             builder.Services.AddScoped<IDeliveryRepository, DeliveryRepository>();
             builder.Services.AddScoped<IDeliveryPersonRepository, DeliveryPersonRepository>();
             builder.Services.AddScoped<IRatingRepository, RatingRepository>();
+            builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 
             // Controllers
             builder.Services.AddControllers()
@@ -59,6 +60,13 @@ namespace ShelfLife
 
             var app = builder.Build();
 
+            // Seed default categories on startup
+            using (var scope = app.Services.CreateScope())
+            {
+                var categoryRepo = scope.ServiceProvider.GetRequiredService<ICategoryRepository>();
+                await categoryRepo.SeedDefaultCategoriesAsync();
+            }
+
             // Configure the HTTP request pipeline.
             if (app.Environment.IsDevelopment())
             {
@@ -69,6 +77,9 @@ namespace ShelfLife
                     c.RoutePrefix = "swagger";
                 });
             }
+
+            // Enable static files for image serving
+            app.UseStaticFiles();
 
             app.UseHttpsRedirection();
 

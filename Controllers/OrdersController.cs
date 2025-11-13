@@ -119,6 +119,18 @@ namespace ShelfLife.Controllers
             return Ok(order);
         }
 
+        // GET: api/Orders/{id}/payment-breakdown
+        // Get detailed payment breakdown for an order
+        [HttpGet("{id}/payment-breakdown")]
+        public async Task<ActionResult<PaymentBreakdownDTO>> GetPaymentBreakdown(int id)
+        {
+            var breakdown = await _orderRepo.GetPaymentBreakdownAsync(id);
+            if (breakdown == null)
+                return NotFound(new { message = "Order not found" });
+
+            return Ok(breakdown);
+        }
+
         // GET: api/Orders/incoming/{userId}
         [HttpGet("incoming/{userId}")]
         public async Task<ActionResult<IEnumerable<OrderDisplayDTO>>> GetIncomingOrders(int userId)
