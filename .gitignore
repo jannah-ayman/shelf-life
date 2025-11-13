@@ -17,3 +17,10 @@ publish/
 
 # Environment
 *.env
+
+# Uploads - ignore all except default images
+wwwroot/uploads/books/*
+!wwwroot/uploads/books/default-book.jpg
+
+wwwroot/uploads/books/profiles/*
+!wwwroot/uploads/books/profiles/default-profile.jpg
