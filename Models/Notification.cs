@@ -13,7 +13,7 @@ namespace ShelfLife.Models
         RATING_RECEIVED,
         ORDER_CANCELLED
     }
-
+    [Table("Notification")]
     public class Notification
     {
         [Key]

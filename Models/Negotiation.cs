@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ShelfLife.Models
 {
+    [Table("Negotiation")]
     public class Negotiation
     {
         [Key]

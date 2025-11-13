@@ -11,7 +11,7 @@ namespace ShelfLife.Models
         DELIVERED,
         FAILED
     }
-
+    [Table("Delivery")]
     [Index(nameof(OrderID), IsUnique = true)]
     public class Delivery
     {

@@ -20,7 +20,7 @@ namespace ShelfLife.Models
         Swapped
         // Donated removed
     }
-
+    [Table("BookListing")]
     public class BookListing
     {
         [Key]

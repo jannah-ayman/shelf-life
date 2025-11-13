@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ShelfLife.Models
 {
+    [Table("Rating")]
     [Index(nameof(OrderID), IsUnique = true)]
     public class Rating
     {

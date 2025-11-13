@@ -8,7 +8,7 @@ namespace ShelfLife.Models
         NORMAL_USER,
         BUSINESS
     }
-
+    [Table("User")]
     public class User
     {
         [Key]

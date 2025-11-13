@@ -9,7 +9,7 @@ namespace ShelfLife.Models
         PENDING,
         COMPLETED
     }
-
+    [Table("Payment")]
     [Index(nameof(OrderID), IsUnique = true)]
     public class Payment
     {

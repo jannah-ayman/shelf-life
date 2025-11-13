@@ -19,7 +19,7 @@ namespace ShelfLife.Models
         DELIVERING,       // Order is being delivered
         COMPLETED         // Order completed
     }
-
+    [Table("Order")]
     public class Order
     {
         [Key]
