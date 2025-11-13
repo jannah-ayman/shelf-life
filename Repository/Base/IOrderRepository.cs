@@ -17,6 +17,7 @@ namespace ShelfLife.Repository.Base
         Task<Order?> CreateOrderAsync(Order order);
         Task<Order?> UpdateOrderAsync(Order order);
         Task<bool> DeleteOrderAsync(int id);
+        Task<bool> CancelOrderAsync(int orderId); // NEW
 
         // Order ownership checks
         Task<bool> UserOwnsOrderListingAsync(int userId, int orderId);

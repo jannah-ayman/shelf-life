@@ -2,6 +2,8 @@
 using ShelfLife.DTOs;
 using ShelfLife.Models;
 using ShelfLife.Repository.Base;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace ShelfLife.Controllers
 {
@@ -20,8 +22,79 @@ namespace ShelfLife.Controllers
             _deliveryRepo = deliveryRepo;
         }
 
+        // POST: api/DeliveryPerson/register
+        [HttpPost("register")]
+        public async Task<ActionResult> Register([FromBody] DeliveryPersonRegisterDTO dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // Check if email already exists
+            var existingPerson = await _deliveryPersonRepo.GetDeliveryPersonByEmailAsync(dto.Email);
+            if (existingPerson != null)
+                return Conflict(new { message = "Email already registered" });
+
+            // Hash password
+            var hashedPassword = HashPassword(dto.Password);
+
+            var deliveryPerson = new DeliveryPerson
+            {
+                Name = dto.Name,
+                Phone = dto.Phone,
+                Email = dto.Email,
+                Password = hashedPassword,
+                City = dto.City,
+                VehicleType = dto.VehicleType,
+                AverageRating = 0,
+                TotalDeliveries = 0,
+                IsAvailable = true,
+                TotalEarnings = 0,
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var created = await _deliveryPersonRepo.CreateDeliveryPersonAsync(deliveryPerson);
+            if (created == null)
+                return StatusCode(500, new { message = "Failed to register delivery person" });
+
+            return Ok(new
+            {
+                message = "Registration successful",
+                deliveryPersonId = created.DeliveryPersonID
+            });
+        }
+
+        // POST: api/DeliveryPerson/login
+        [HttpPost("login")]
+        public async Task<ActionResult> Login([FromBody] DeliveryPersonLoginDTO dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var deliveryPerson = await _deliveryPersonRepo.GetDeliveryPersonByEmailAsync(dto.Email);
+            if (deliveryPerson == null)
+                return Unauthorized(new { message = "Invalid credentials" });
+
+            var hashedPassword = HashPassword(dto.Password);
+            if (deliveryPerson.Password != hashedPassword)
+                return Unauthorized(new { message = "Invalid credentials" });
+
+            return Ok(new
+            {
+                message = "Login successful",
+                deliveryPerson = new
+                {
+                    deliveryPerson.DeliveryPersonID,
+                    deliveryPerson.Name,
+                    deliveryPerson.Email,
+                    deliveryPerson.Phone,
+                    deliveryPerson.City,
+                    deliveryPerson.VehicleType,
+                    deliveryPerson.IsAvailable
+                }
+            });
+        }
+
         // GET: api/DeliveryPerson/{deliveryPersonId}/profile
-        // Get delivery person profile
         [HttpGet("{deliveryPersonId}/profile")]
         public async Task<ActionResult<DeliveryPersonProfileDTO>> GetProfile(int deliveryPersonId)
         {
@@ -33,7 +106,6 @@ namespace ShelfLife.Controllers
         }
 
         // PUT: api/DeliveryPerson/{deliveryPersonId}/profile
-        // Update delivery person profile
         [HttpPut("{deliveryPersonId}/profile")]
         public async Task<ActionResult<DeliveryPersonProfileDTO>> UpdateProfile(
             int deliveryPersonId,
@@ -61,7 +133,6 @@ namespace ShelfLife.Controllers
         }
 
         // PUT: api/DeliveryPerson/{deliveryPersonId}/availability
-        // Toggle availability status
         [HttpPut("{deliveryPersonId}/availability")]
         public async Task<ActionResult> UpdateAvailability(
             int deliveryPersonId,
@@ -70,7 +141,6 @@ namespace ShelfLife.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Check if they have an active delivery
             if (availabilityDto.IsAvailable == false)
             {
                 var hasActiveDelivery = await _deliveryRepo.HasActiveDeliveryAsync(deliveryPersonId);
@@ -86,7 +156,6 @@ namespace ShelfLife.Controllers
         }
 
         // POST: api/DeliveryPerson/{deliveryPersonId}/change-password
-        // Change password
         [HttpPost("{deliveryPersonId}/change-password")]
         public async Task<ActionResult> ChangePassword(
             int deliveryPersonId,
@@ -99,18 +168,19 @@ namespace ShelfLife.Controllers
             if (deliveryPerson == null)
                 return NotFound(new { message = "Delivery person not found" });
 
-            // NOTE: In production, implement proper password hashing
-            if (deliveryPerson.Password != passwordDto.CurrentPassword)
+            // Hash and verify current password
+            var currentHash = HashPassword(passwordDto.CurrentPassword);
+            if (deliveryPerson.Password != currentHash)
                 return BadRequest(new { message = "Current password is incorrect" });
 
-            deliveryPerson.Password = passwordDto.NewPassword; // Should be hashed
+            // Hash new password
+            deliveryPerson.Password = HashPassword(passwordDto.NewPassword);
             await _deliveryPersonRepo.UpdateDeliveryPersonAsync(deliveryPerson);
 
             return Ok(new { message = "Password changed successfully" });
         }
 
         // GET: api/DeliveryPerson/{deliveryPersonId}/stats
-        // Get delivery person statistics
         [HttpGet("{deliveryPersonId}/stats")]
         public async Task<ActionResult<DeliveryPersonStatsDTO>> GetStats(int deliveryPersonId)
         {
@@ -119,7 +189,6 @@ namespace ShelfLife.Controllers
         }
 
         // GET: api/DeliveryPerson/{deliveryPersonId}/earnings
-        // Get detailed earnings breakdown
         [HttpGet("{deliveryPersonId}/earnings")]
         public async Task<ActionResult<DeliveryPersonEarningsDTO>> GetEarnings(int deliveryPersonId)
         {
@@ -146,11 +215,9 @@ namespace ShelfLife.Controllers
         }
 
         // DELETE: api/DeliveryPerson/{deliveryPersonId}
-        // Delete/deactivate account
         [HttpDelete("{deliveryPersonId}")]
         public async Task<ActionResult> DeleteAccount(int deliveryPersonId)
         {
-            // Check if they have active deliveries
             var hasActiveDelivery = await _deliveryRepo.HasActiveDeliveryAsync(deliveryPersonId);
             if (hasActiveDelivery)
                 return BadRequest(new { message = "Cannot delete account while you have active deliveries" });
@@ -163,6 +230,13 @@ namespace ShelfLife.Controllers
         }
 
         // Helper methods
+        private string HashPassword(string password)
+        {
+            using var sha256 = SHA256.Create();
+            var bytes = Encoding.UTF8.GetBytes(password);
+            var hash = sha256.ComputeHash(bytes);
+            return Convert.ToBase64String(hash);
+        }
 
         private async Task<DeliveryPersonProfileDTO?> GetDeliveryPersonProfile(int deliveryPersonId)
         {
@@ -194,14 +268,8 @@ namespace ShelfLife.Controllers
             decimal earnings = 0;
             foreach (var delivery in thisMonthDeliveries)
             {
-                if (delivery.OrderType == OrderType.SALE)
-                {
-                    earnings += delivery.DeliveryFee * 0.8m; // 80% to delivery person
-                }
-                else if (delivery.OrderType == OrderType.SWAP)
-                {
-                    earnings += delivery.DeliveryFee * 0.5m; // 50% to delivery person
-                }
+                // 80% to delivery person for both SALE and SWAP
+                earnings += delivery.DeliveryFee * 0.8m;
             }
 
             return earnings;

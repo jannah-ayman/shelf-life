@@ -5,6 +5,7 @@ namespace ShelfLife.Repository.Base
     public interface IDeliveryPersonRepository
     {
         Task<DeliveryPerson?> GetDeliveryPersonByIdAsync(int deliveryPersonId);
+        Task<DeliveryPerson?> GetDeliveryPersonByEmailAsync(string email);
         Task<IEnumerable<DeliveryPerson>> GetAllDeliveryPeopleAsync();
         Task<IEnumerable<DeliveryPerson>> GetAvailableDeliveryPeopleAsync(string? city = null);
         Task<DeliveryPerson?> CreateDeliveryPersonAsync(DeliveryPerson deliveryPerson);

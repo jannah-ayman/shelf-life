@@ -20,6 +20,12 @@ namespace ShelfLife.Repository
                 .FirstOrDefaultAsync(dp => dp.DeliveryPersonID == deliveryPersonId);
         }
 
+        public async Task<DeliveryPerson?> GetDeliveryPersonByEmailAsync(string email)
+        {
+            return await _context.DeliveryPeople
+                .FirstOrDefaultAsync(dp => dp.Email.ToLower() == email.ToLower());
+        }
+
         public async Task<IEnumerable<DeliveryPerson>> GetAllDeliveryPeopleAsync()
         {
             return await _context.DeliveryPeople
@@ -80,21 +86,18 @@ namespace ShelfLife.Repository
 
         public async Task<decimal> UpdateAverageRatingAsync(int deliveryPersonId)
         {
-            // Get all ratings for deliveries made by this delivery person
-            // Relationship: Rating -> Order -> Delivery -> DeliveryPerson
             var ratings = await _context.Ratings
                 .Include(r => r.Order)
                 .ThenInclude(o => o.Delivery)
-                .Where(r => r.Order.Delivery != null && 
+                .Where(r => r.Order.Delivery != null &&
                            r.Order.Delivery.DeliveryPersonID.HasValue &&
                            r.Order.Delivery.DeliveryPersonID.Value == deliveryPersonId)
                 .ToListAsync();
 
             decimal avg = 0.0m;
-            
+
             if (ratings.Any())
             {
-                // Calculate average of DeliveryScore (not OrderScore)
                 avg = (decimal)ratings.Average(r => (double)r.DeliveryScore);
             }
 

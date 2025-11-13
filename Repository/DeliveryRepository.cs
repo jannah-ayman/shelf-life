@@ -70,7 +70,7 @@ namespace ShelfLife.Repository
                 })
                 .ToListAsync();
 
-            // Apply fee filtering in memory
+            // Apply fee filtering in memory after validation
             if (filter?.MinFee.HasValue == true)
             {
                 orders = orders.Where(o => o.DeliveryFee >= filter.MinFee.Value).ToList();
@@ -200,57 +200,79 @@ namespace ShelfLife.Repository
 
         public async Task<DeliveryDetailDTO?> ConfirmDeliveryByPersonAsync(int deliveryId)
         {
-            var delivery = await _context.Deliveries
-                .Include(d => d.Order)
-                    .ThenInclude(o => o.Listing)
-                .Include(d => d.Order.Negotiations)
-                .Include(d => d.DeliveryPerson)
-                .FirstOrDefaultAsync(d => d.DeliveryID == deliveryId);
-
-            if (delivery == null)
-                return null;
-
-            if (delivery.Status != DeliveryStatus.PICKED_UP || delivery.Order.Status != OrderStatus.DELIVERING)
-                return null;
-
-            delivery.DeliveryPersonConfirmed = true;
-            delivery.PickedUpAt ??= DateTime.UtcNow;
-
-            // Only mark as fully delivered if buyer has also confirmed
-            if (delivery.BuyerConfirmed)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                await CompleteDeliveryAsync(delivery);
-            }
+                var delivery = await _context.Deliveries
+                    .Include(d => d.Order)
+                        .ThenInclude(o => o.Listing)
+                    .Include(d => d.Order.Negotiations)
+                    .Include(d => d.DeliveryPerson)
+                    .FirstOrDefaultAsync(d => d.DeliveryID == deliveryId);
 
-            await _context.SaveChangesAsync();
-            return await GetDeliveryByIdAsync(deliveryId);
+                if (delivery == null)
+                    return null;
+
+                if (delivery.Status != DeliveryStatus.PICKED_UP || delivery.Order.Status != OrderStatus.DELIVERING)
+                    return null;
+
+                delivery.DeliveryPersonConfirmed = true;
+                delivery.PickedUpAt ??= DateTime.UtcNow;
+
+                // Only complete if BOTH have confirmed
+                if (delivery.BuyerConfirmed && delivery.DeliveryPersonConfirmed)
+                {
+                    await CompleteDeliveryAsync(delivery);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return await GetDeliveryByIdAsync(deliveryId);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<DeliveryDetailDTO?> ConfirmDeliveryByBuyerAsync(int deliveryId)
         {
-            var delivery = await _context.Deliveries
-                .Include(d => d.Order)
-                    .ThenInclude(o => o.Listing)
-                .Include(d => d.Order.Negotiations)
-                .Include(d => d.DeliveryPerson)
-                .FirstOrDefaultAsync(d => d.DeliveryID == deliveryId);
-
-            if (delivery == null)
-                return null;
-
-            if (delivery.Status != DeliveryStatus.PICKED_UP || delivery.Order.Status != OrderStatus.DELIVERING)
-                return null;
-
-            delivery.BuyerConfirmed = true;
-
-            // Only mark as fully delivered if delivery person already confirmed
-            if (delivery.DeliveryPersonConfirmed)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                await CompleteDeliveryAsync(delivery);
-            }
+                var delivery = await _context.Deliveries
+                    .Include(d => d.Order)
+                        .ThenInclude(o => o.Listing)
+                    .Include(d => d.Order.Negotiations)
+                    .Include(d => d.DeliveryPerson)
+                    .FirstOrDefaultAsync(d => d.DeliveryID == deliveryId);
 
-            await _context.SaveChangesAsync();
-            return await GetDeliveryByIdAsync(deliveryId);
+                if (delivery == null)
+                    return null;
+
+                if (delivery.Status != DeliveryStatus.PICKED_UP || delivery.Order.Status != OrderStatus.DELIVERING)
+                    return null;
+
+                delivery.BuyerConfirmed = true;
+
+                // Only complete if BOTH have confirmed
+                if (delivery.BuyerConfirmed && delivery.DeliveryPersonConfirmed)
+                {
+                    await CompleteDeliveryAsync(delivery);
+                }
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return await GetDeliveryByIdAsync(deliveryId);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         private async Task CompleteDeliveryAsync(Delivery delivery)
@@ -360,12 +382,54 @@ namespace ShelfLife.Repository
         private static decimal CalculateDeliveryFee(string? pickupCity, string? dropoffCity)
         {
             if (string.IsNullOrEmpty(pickupCity) || string.IsNullOrEmpty(dropoffCity))
-                return 50m;
+                return 50m; // Default fee
 
-            if (pickupCity.Equals(dropoffCity, StringComparison.OrdinalIgnoreCase))
+            // Normalize city names
+            var pickup = pickupCity.Trim().ToLower();
+            var dropoff = dropoffCity.Trim().ToLower();
+
+            // Same city delivery
+            if (pickup == dropoff)
+            {
+                return GetSameCityFee(pickup);
+            }
+
+            // Inter-city delivery
+            return GetInterCityFee(pickup, dropoff);
+        }
+
+        private static decimal GetSameCityFee(string city)
+        {
+            // Major cities (Cairo, Alexandria, Giza)
+            if (city == "cairo" || city == "alexandria" || city == "giza")
                 return 30m;
 
-            return 80m;
+            // Other cities (Assiut, etc.)
+            return 25m;
+        }
+
+        private static decimal GetInterCityFee(string fromCity, string toCity)
+        {
+            // Define city tiers based on Egypt's geography
+            var majorCities = new[] { "cairo", "alexandria", "giza" };
+            var bothMajor = majorCities.Contains(fromCity) && majorCities.Contains(toCity);
+
+            if (bothMajor)
+            {
+                // Between major cities (Cairo-Alexandria, Cairo-Giza, etc.)
+                return 60m;
+            }
+
+            var oneMajor = majorCities.Contains(fromCity) || majorCities.Contains(toCity);
+
+            if (oneMajor)
+            {
+                // One major city, one regional (Cairo-Assiut, etc.)
+                return 80m;
+            }
+
+            // Between regional cities
+            return 70m;
         }
 
         private async Task ProcessDeliveryPaymentAsync(Delivery delivery)

@@ -1,12 +1,9 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.IdentityModel.Tokens;
 using ShelfLife.DTOs;
 using ShelfLife.Models;
 using ShelfLife.Models.DTOs;
-using SixLabors.ImageSharp;
-using System.IdentityModel.Tokens.Jwt;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Mail;
@@ -15,11 +12,10 @@ using System.Security.Cryptography;
 using System.Text;
 using YourApp.DTOs;
 
-
 namespace ShelfLife.Controllers
 {
     [Route("api/[controller]")]
-    [ApiController] 
+    [ApiController]
     public class AuthController : ControllerBase
     {
         private readonly DBcontext _context;
@@ -57,7 +53,7 @@ namespace ShelfLife.Controllers
                 City = dto.City,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
-                UserType = dto.UserType == 0 ?  UserType.NORMAL_USER : UserType.BUSINESS
+                UserType = dto.UserType == 0 ? UserType.NORMAL_USER : UserType.BUSINESS
             };
 
             _context.Users.Add(user);
@@ -76,38 +72,19 @@ namespace ShelfLife.Controllers
             if (user == null)
                 return Unauthorized(new { message = "Invalid credentials." });
 
-            using var sha256 = SHA256.Create();
-            var hashedPassword = Convert.ToBase64String(sha256.ComputeHash(Encoding.UTF8.GetBytes(loginDto.Password)));
+            // Use consistent hashing method
+            var hashedPassword = HashPassword(loginDto.Password);
 
             if (user.PasswordHash != hashedPassword)
                 return Unauthorized(new { message = "Invalid credentials." });
 
-            // --- Generate JWT ---
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new[]
-                {
-            new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.Name),
-            new Claim(ClaimTypes.Role, user.UserType.ToString())
-        }),
-                Expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"])),
-                Issuer = _configuration["Jwt:Issuer"],
-                Audience = _configuration["Jwt:Audience"],
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
-
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            var jwt = tokenHandler.WriteToken(token);
+            // Generate JWT
+            var token = GenerateJwtToken(user);
 
             return Ok(new
             {
                 message = "Login successful",
-                token = jwt,
+                token = token,
                 user = new
                 {
                     user.UserID,
@@ -117,12 +94,13 @@ namespace ShelfLife.Controllers
                 }
             });
         }
+
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDTO dto)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
             if (user == null)
-                return Ok(new { message = "If an account exists, you’ll receive a reset link." });
+                return Ok(new { message = "If an account exists, you'll receive a reset link." });
 
             // Delete old tokens for same user
             var oldTokens = _context.PasswordResetTokens.Where(t => t.Email == dto.Email);
@@ -142,8 +120,16 @@ namespace ShelfLife.Controllers
 
             var resetLink = $"http://localhost:3000/reset-password?token={token}";
 
-            await SendEmailAsync(dto.Email, "Password Reset",
-                $"Click <a href='{resetLink}'>here</a> to reset your password.");
+            try
+            {
+                await SendEmailAsync(dto.Email, "Password Reset",
+                    $"Click <a href='{resetLink}'>here</a> to reset your password.");
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't reveal email sending failure to user
+                Console.WriteLine($"Email error: {ex.Message}");
+            }
 
             return Ok(new { message = "Reset link sent if account exists." });
         }
@@ -169,30 +155,28 @@ namespace ShelfLife.Controllers
             return Ok(new { message = "Password reset successful." });
         }
 
-
         private async Task SendEmailAsync(string toEmail, string subject, string body)
+        {
+            // Read from configuration instead of hardcoding
+            string fromEmail = _configuration["Email:FromAddress"];
+            string fromPassword = _configuration["Email:Password"];
+
+            var mail = new MailMessage(fromEmail, toEmail, subject, body)
             {
-                string fromEmail = "aabdula2712@gmail.com";
-                string fromPassword = "eblmolyvvxfyrqef";
+                IsBodyHtml = true
+            };
 
-                var mail = new MailMessage(fromEmail, toEmail, subject, body)
-                {
-                    IsBodyHtml = true
-                };
+            using var smtp = new SmtpClient("smtp.gmail.com")
+            {
+                Port = 587,
+                Credentials = new NetworkCredential(fromEmail, fromPassword),
+                EnableSsl = true
+            };
 
-                using var smtp = new SmtpClient("smtp.gmail.com")
-                {
-                    Port = 587,
-                    Credentials = new NetworkCredential(fromEmail, fromPassword),
-                    EnableSsl = true
-                };
+            await smtp.SendMailAsync(mail);
+        }
 
-                await smtp.SendMailAsync(mail);
-            }
-
-
-
-    private string HashPassword(string password)
+        private string HashPassword(string password)
         {
             using var sha256 = SHA256.Create();
             var bytes = Encoding.UTF8.GetBytes(password);
@@ -200,6 +184,28 @@ namespace ShelfLife.Controllers
             return Convert.ToBase64String(hash);
         }
 
+        private string GenerateJwtToken(User user)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
 
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(ClaimTypes.Name, user.Name),
+                    new Claim(ClaimTypes.Role, user.UserType.ToString())
+                }),
+                Expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"])),
+                Issuer = _configuration["Jwt:Issuer"],
+                Audience = _configuration["Jwt:Audience"],
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
+        }
     }
 }

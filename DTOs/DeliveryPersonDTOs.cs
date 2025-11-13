@@ -3,6 +3,45 @@ using System.ComponentModel.DataAnnotations;
 
 namespace ShelfLife.DTOs
 {
+    // DTO for delivery person registration
+    public class DeliveryPersonRegisterDTO
+    {
+        [Required]
+        [MaxLength(200)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(20)]
+        [Phone]
+        public string Phone { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(200)]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(8)]
+        public string Password { get; set; } = string.Empty;
+
+        [MaxLength(100)]
+        public string? City { get; set; }
+
+        [Required]
+        public VehicleType VehicleType { get; set; }
+    }
+
+    // DTO for delivery person login
+    public class DeliveryPersonLoginDTO
+    {
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        public string Password { get; set; } = string.Empty;
+    }
+
     // DTO for delivery person profile
     public class DeliveryPersonProfileDTO
     {

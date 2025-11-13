@@ -38,7 +38,6 @@ namespace ShelfLife.Repository
 
             if (order.OrderType == OrderType.SALE)
             {
-                // SALE order calculations
                 decimal itemPrice = order.Price ?? 0;
                 decimal platformFeePercentage = order.Listing.User.UserType == UserType.NORMAL_USER
                     ? NORMAL_USER_PLATFORM_FEE
@@ -52,16 +51,15 @@ namespace ShelfLife.Repository
                 breakdown.TotalAmount = itemPrice + breakdown.DeliveryFee;
                 breakdown.BuyerPays = breakdown.TotalAmount;
                 breakdown.SellerReceives = itemPrice - breakdown.PlatformFee;
-                breakdown.DeliveryPersonReceives = breakdown.DeliveryFee * 0.80m; // 80% to delivery person
+                breakdown.DeliveryPersonReceives = breakdown.DeliveryFee * 0.80m;
                 breakdown.PlatformReceives = breakdown.PlatformFee + (breakdown.DeliveryFee * 0.20m);
 
                 breakdown.PaymentSummary = $"Buyer pays: {breakdown.BuyerPays:C} " +
                     $"(Item: {breakdown.SubTotal:C} + Delivery: {breakdown.DeliveryFee:C}). " +
                     $"Seller receives: {breakdown.SellerReceives:C} after {breakdown.PlatformFeePercentage}% platform fee.";
             }
-            else // SWAP
+            else
             {
-                // SWAP order calculations
                 breakdown.ItemPrice = 0;
                 breakdown.SubTotal = 0;
                 breakdown.PlatformFeePercentage = 0;
@@ -71,9 +69,9 @@ namespace ShelfLife.Repository
                 breakdown.SellerDeliveryShare = breakdown.DeliveryFee / 2;
                 breakdown.TotalAmount = breakdown.DeliveryFee;
                 breakdown.BuyerPays = breakdown.BuyerDeliveryShare.Value;
-                breakdown.SellerReceives = 0; // No money for seller in swap
-                breakdown.DeliveryPersonReceives = breakdown.DeliveryFee * 0.80m; // 80% to delivery person
-                breakdown.PlatformReceives = breakdown.DeliveryFee * 0.20m; // 20% to platform
+                breakdown.SellerReceives = 0;
+                breakdown.DeliveryPersonReceives = breakdown.DeliveryFee * 0.80m;
+                breakdown.PlatformReceives = breakdown.DeliveryFee * 0.20m;
 
                 breakdown.PaymentSummary = $"Both parties split delivery fee: {breakdown.DeliveryFee:C}. " +
                     $"Each pays: {breakdown.BuyerDeliveryShare:C}. " +
@@ -83,7 +81,6 @@ namespace ShelfLife.Repository
             return breakdown;
         }
 
-        // Existing retrieval methods
         public async Task<IEnumerable<OrderDisplayDTO>> GetUserIncomingOrdersAsync(int userId)
         {
             return await _context.Orders
@@ -131,7 +128,6 @@ namespace ShelfLife.Repository
                 .FirstOrDefaultAsync();
         }
 
-        // Basic CRUD
         public async Task<Order?> CreateOrderAsync(Order order)
         {
             _context.Orders.Add(order);
@@ -157,7 +153,64 @@ namespace ShelfLife.Repository
             return true;
         }
 
-        // Ownership checks
+        public async Task<bool> CancelOrderAsync(int orderId)
+        {
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var order = await _context.Orders
+                    .Include(o => o.Listing)
+                    .Include(o => o.Negotiations)
+                    .FirstOrDefaultAsync(o => o.OrderID == orderId);
+
+                if (order == null)
+                    return false;
+
+                // Cannot cancel completed or delivering orders
+                if (order.Status == OrderStatus.COMPLETED ||
+                    order.Status == OrderStatus.DELIVERING ||
+                    order.Status == OrderStatus.DELIVERY_ASSIGNED)
+                    return false;
+
+                // Set order status to cancelled
+                order.Status = OrderStatus.CANCELLED;
+
+                // Restore listing quantity
+                var listing = order.Listing;
+                if (listing != null)
+                {
+                    listing.AvailableQuantity += order.Quantity;
+                    _context.BookListings.Update(listing);
+                }
+
+                // For swaps, also restore offered listing quantity
+                if (order.OrderType == OrderType.SWAP)
+                {
+                    var negotiation = order.Negotiations.FirstOrDefault();
+                    if (negotiation?.OfferedListingID != null)
+                    {
+                        var offeredListing = await _context.BookListings.FindAsync(negotiation.OfferedListingID);
+                        if (offeredListing != null)
+                        {
+                            offeredListing.AvailableQuantity += order.Quantity;
+                            _context.BookListings.Update(offeredListing);
+                        }
+                    }
+                }
+
+                _context.Orders.Update(order);
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
         public async Task<bool> UserOwnsOrderListingAsync(int userId, int orderId)
         {
             return await _context.Orders
@@ -171,7 +224,6 @@ namespace ShelfLife.Repository
                 .AnyAsync(o => o.OrderID == orderId && o.BuyerID == userId);
         }
 
-        // Helper methods
         public async Task<BookListing?> GetListingByIdAsync(int listingId)
         {
             return await _context.BookListings
@@ -198,7 +250,6 @@ namespace ShelfLife.Repository
             return await _context.Users.FindAsync(userId);
         }
 
-        // Sale order creation - Auto-accepted with correct platform fee
         public async Task<Order?> CreateSaleOrderAsync(int buyerId, CreateSaleOrderDTO dto)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -208,7 +259,6 @@ namespace ShelfLife.Repository
                 if (listing == null)
                     return null;
 
-                // Validations
                 if (!listing.IsSellable || listing.Price == null)
                     return null;
 
@@ -218,7 +268,6 @@ namespace ShelfLife.Repository
                 if (listing.UserID == buyerId)
                     return null;
 
-                // Calculate fees based on seller type
                 decimal basePrice = listing.Price.Value * dto.Quantity;
                 decimal platformFeePercentage = listing.User.UserType == UserType.NORMAL_USER
                     ? NORMAL_USER_PLATFORM_FEE
@@ -227,7 +276,6 @@ namespace ShelfLife.Repository
                 decimal deliveryFee = !string.IsNullOrWhiteSpace(dto.DropoffAddress) ? 50.00m : 0m;
                 decimal totalPrice = basePrice + deliveryFee;
 
-                // Create order with ACCEPTED status (auto-accepted for sales)
                 var order = new Order
                 {
                     OrderType = OrderType.SALE,
@@ -243,7 +291,6 @@ namespace ShelfLife.Repository
                 _context.Orders.Add(order);
                 await _context.SaveChangesAsync();
 
-                // Create payment record
                 var payment = new Payment
                 {
                     OrderID = order.OrderID,
@@ -253,7 +300,6 @@ namespace ShelfLife.Repository
                 };
                 _context.Payments.Add(payment);
 
-                // Reserve quantity
                 listing.AvailableQuantity -= dto.Quantity;
                 _context.BookListings.Update(listing);
 
@@ -269,7 +315,6 @@ namespace ShelfLife.Repository
             }
         }
 
-        // Swap order creation - Starts with NEGOTIATING status
         public async Task<Order?> CreateSwapOrderAsync(int buyerId, CreateSwapOrderDTO dto)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -284,7 +329,6 @@ namespace ShelfLife.Repository
                 if (requestedListing == null || offeredListing == null)
                     return null;
 
-                // Validations
                 if (!requestedListing.IsSwappable || !offeredListing.IsSwappable)
                     return null;
 
@@ -300,10 +344,8 @@ namespace ShelfLife.Repository
                 if (requestedListing.UserID == buyerId)
                     return null;
 
-                // Calculate delivery fee (split 50/50 between parties)
                 decimal deliveryFee = !string.IsNullOrWhiteSpace(dto.DropoffAddress) ? 50.00m : 0m;
 
-                // Create order with NEGOTIATING status
                 var order = new Order
                 {
                     OrderType = OrderType.SWAP,
@@ -319,7 +361,6 @@ namespace ShelfLife.Repository
                 _context.Orders.Add(order);
                 await _context.SaveChangesAsync();
 
-                // Create negotiation
                 var negotiation = new Negotiation
                 {
                     OrderID = order.OrderID,
@@ -329,7 +370,6 @@ namespace ShelfLife.Repository
                 };
                 _context.Negotiations.Add(negotiation);
 
-                // Reserve quantities (pending seller acceptance)
                 requestedListing.AvailableQuantity -= dto.Quantity;
                 offeredListing.AvailableQuantity -= dto.Quantity;
 
@@ -348,7 +388,6 @@ namespace ShelfLife.Repository
             }
         }
 
-        // Respond to swap (accept or reject)
         public async Task<bool> RespondToSwapAsync(int orderId, bool accept)
         {
             using var transaction = await _context.Database.BeginTransactionAsync();
@@ -367,10 +406,8 @@ namespace ShelfLife.Repository
 
                 if (accept)
                 {
-                    // Accept the swap
                     order.Status = OrderStatus.ACCEPTED;
 
-                    // Create payment record for tracking
                     var payment = new Payment
                     {
                         OrderID = order.OrderID,
@@ -382,7 +419,6 @@ namespace ShelfLife.Repository
                 }
                 else
                 {
-                    // Reject the swap - restore quantities
                     order.Status = OrderStatus.REJECTED;
 
                     var requestedListing = await _context.BookListings.FindAsync(order.ListingID);
@@ -392,7 +428,6 @@ namespace ShelfLife.Repository
                         _context.BookListings.Update(requestedListing);
                     }
 
-                    // Restore offered listing quantity
                     var negotiation = order.Negotiations.FirstOrDefault();
                     if (negotiation?.OfferedListingID != null)
                     {
@@ -418,7 +453,6 @@ namespace ShelfLife.Repository
             }
         }
 
-        // Helper method to map to DTO
         private static OrderDisplayDTO MapToOrderDisplayDTO(Order o)
         {
             var listing = o.Listing;

@@ -5,7 +5,7 @@ using ShelfLife.Repository.Base;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using System.Security.Claims;
+using ShelfLife.Hubs;
 
 namespace ShelfLife
 {
@@ -28,6 +28,13 @@ namespace ShelfLife
             builder.Services.AddScoped<IDeliveryPersonRepository, DeliveryPersonRepository>();
             builder.Services.AddScoped<IRatingRepository, RatingRepository>();
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+            builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+
+            // --- Add SignalR
+            builder.Services.AddSignalR();
+
+            // --- Add Notification Service
+            builder.Services.AddScoped<NotificationService>();
 
             // --- Controllers
             builder.Services.AddControllers().AddJsonOptions(options =>
@@ -58,7 +65,7 @@ namespace ShelfLife
                 });
             });
 
-            // --- JWT Authentication (must be BEFORE builder.Build())
+            // --- JWT Authentication
             builder.Services.AddAuthentication(options =>
             {
                 options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -103,13 +110,15 @@ namespace ShelfLife
             app.UseStaticFiles();
             app.UseCors("AllowAll");
 
-            app.UseAuthentication(); // must be before Authorization
+            app.UseAuthentication();
             app.UseAuthorization();
 
             app.MapControllers();
 
-            app.Run();
+            // Map SignalR hub
+            app.MapHub<NotificationHub>("/notificationHub");
 
+            app.Run();
         }
     }
 }

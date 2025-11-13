@@ -21,9 +21,7 @@ namespace ShelfLife.Controllers
             _deliveryPersonRepo = deliveryPersonRepo;
         }
 
-
         // GET: api/Delivery/{deliveryPersonId}/available-orders
-        // Get all available orders for delivery (ACCEPTED status, no active delivery for person)
         [HttpGet("{deliveryPersonId}/available-orders")]
         public async Task<ActionResult<IEnumerable<DeliveryOrderDisplayDTO>>> GetAvailableOrders(
             int deliveryPersonId,
@@ -36,6 +34,12 @@ namespace ShelfLife.Controllers
             var dp = await _deliveryPersonRepo.GetDeliveryPersonByIdAsync(deliveryPersonId);
             if (dp == null)
                 return NotFound(new { message = "Delivery person not found" });
+
+            // Validate fee range
+            if (minFee.HasValue && maxFee.HasValue && minFee.Value > maxFee.Value)
+            {
+                return BadRequest(new { message = "Minimum fee cannot be greater than maximum fee" });
+            }
 
             // Check if delivery person has an active delivery
             var hasActiveDelivery = await _deliveryRepo.HasActiveDeliveryAsync(deliveryPersonId);
@@ -58,7 +62,6 @@ namespace ShelfLife.Controllers
         }
 
         // GET: api/Delivery/{deliveryPersonId}/active-delivery
-        // Get current active delivery for delivery person
         [HttpGet("{deliveryPersonId}/active-delivery")]
         public async Task<ActionResult<DeliveryDetailDTO>> GetActiveDelivery(int deliveryPersonId)
         {
@@ -74,7 +77,6 @@ namespace ShelfLife.Controllers
         }
 
         // GET: api/Delivery/{deliveryPersonId}/history
-        // Get delivery history for delivery person
         [HttpGet("{deliveryPersonId}/history")]
         public async Task<ActionResult<IEnumerable<DeliveryDetailDTO>>> GetDeliveryHistory(int deliveryPersonId)
         {
@@ -87,7 +89,6 @@ namespace ShelfLife.Controllers
         }
 
         // POST: api/Delivery/{deliveryPersonId}/accept/{orderId}
-        // Delivery person accepts order → Order = DELIVERY_ASSIGNED, Delivery = ASSIGNED
         [HttpPost("{deliveryPersonId}/accept/{orderId}")]
         public async Task<ActionResult<DeliveryDetailDTO>> AcceptDelivery(int deliveryPersonId, int orderId)
         {
@@ -106,7 +107,6 @@ namespace ShelfLife.Controllers
             if (order.Status != OrderStatus.ACCEPTED)
                 return BadRequest(new { message = "Order is not available for delivery" });
 
-            // Creates delivery with ASSIGNED status, changes order to DELIVERY_ASSIGNED
             var delivery = await _deliveryRepo.CreateDeliveryForOrderAsync(orderId, deliveryPersonId);
             if (delivery == null)
                 return StatusCode(500, new { message = "Failed to create delivery" });
@@ -115,7 +115,6 @@ namespace ShelfLife.Controllers
         }
 
         // POST: api/Delivery/{deliveryPersonId}/pickup/{deliveryId}
-        // Delivery person picks up → Order = DELIVERING, Delivery = PICKED_UP
         [HttpPost("{deliveryPersonId}/pickup/{deliveryId}")]
         public async Task<ActionResult<DeliveryDetailDTO>> MarkAsPickedUp(int deliveryPersonId, int deliveryId)
         {
@@ -133,7 +132,6 @@ namespace ShelfLife.Controllers
             if (delivery.Status != DeliveryStatus.ASSIGNED)
                 return BadRequest(new { message = "Delivery must be in ASSIGNED status to pick up" });
 
-            // Changes delivery to PICKED_UP and order to DELIVERING
             var updated = await _deliveryRepo.UpdateDeliveryStatusAsync(deliveryId, DeliveryStatus.PICKED_UP);
             if (updated == null)
                 return StatusCode(500, new { message = "Failed to update delivery status" });
@@ -141,35 +139,7 @@ namespace ShelfLife.Controllers
             return Ok(updated);
         }
 
-        // POST: api/Delivery/{deliveryPersonId}/start-delivering/{deliveryId}
-        // Start delivering (changes order status to DELIVERING)
-        //[HttpPost("{deliveryPersonId}/start-delivering/{deliveryId}")]
-        //public async Task<ActionResult<DeliveryDetailDTO>> StartDelivering(int deliveryPersonId, int deliveryId)
-        //{
-        //    var dp = await _deliveryPersonRepo.GetDeliveryPersonByIdAsync(deliveryPersonId);
-        //    if (dp == null)
-        //        return NotFound(new { message = "Delivery person not found" });
-
-        //    var delivery = await _deliveryRepo.GetDeliveryByIdAsync(deliveryId);
-        //    if (delivery == null)
-        //        return NotFound(new { message = "Delivery not found" });
-
-        //    if (delivery.DeliveryPersonID != deliveryPersonId)
-        //        return Forbid();
-
-        //    if (delivery.Status != DeliveryStatus.PICKED_UP)
-        //        return BadRequest(new { message = "Order must be picked up first" });
-
-        //    // Update order status to DELIVERING (delivery status stays PICKED_UP)
-        //    var updated = await _deliveryRepo.StartDeliveringAsync(deliveryId);
-        //    if (updated == null)
-        //        return StatusCode(500, new { message = "Failed to start delivery" });
-
-        //    return Ok(updated);
-        //}
-
         // POST: api/Delivery/{deliveryPersonId}/confirm-delivery/{deliveryId}
-        // Delivery person delivers and receives payment → Order = COMPLETED, Delivery = DELIVERED
         [HttpPost("{deliveryPersonId}/confirm-delivery/{deliveryId}")]
         public async Task<ActionResult<DeliveryDetailDTO>> ConfirmDeliveryByPerson(int deliveryPersonId, int deliveryId)
         {
@@ -187,20 +157,14 @@ namespace ShelfLife.Controllers
             if (delivery.Status != DeliveryStatus.PICKED_UP)
                 return BadRequest(new { message = "Delivery must be picked up before it can be confirmed." });
 
-            var order = await _orderRepo.GetOrderByIdAsync(delivery.OrderID);
-            if (order == null || order.Status != OrderStatus.DELIVERING)
-                return BadRequest(new { message = "Order must be in DELIVERING status before confirming delivery." });
-
-            // Completes the delivery and order
             var updated = await _deliveryRepo.ConfirmDeliveryByPersonAsync(deliveryId);
             if (updated == null)
-                return BadRequest(new { message = "Failed to confirm delivery. Ensure the order is in the correct status." });
+                return BadRequest(new { message = "Failed to confirm delivery." });
 
             return Ok(updated);
         }
 
         // POST: api/Delivery/buyer-confirm/{deliveryId}
-        // Buyer confirms delivery receipt
         [HttpPost("buyer-confirm/{deliveryId}")]
         public async Task<ActionResult<DeliveryDetailDTO>> ConfirmDeliveryByBuyer(int deliveryId, [FromQuery] int buyerId)
         {
@@ -216,18 +180,14 @@ namespace ShelfLife.Controllers
             if (delivery.Status != DeliveryStatus.PICKED_UP)
                 return BadRequest(new { message = "Delivery must be picked up before it can be confirmed." });
 
-            if (order.Status != OrderStatus.DELIVERING)
-                return BadRequest(new { message = "Order must be in DELIVERING status before confirming delivery." });
-
             var updated = await _deliveryRepo.ConfirmDeliveryByBuyerAsync(deliveryId);
             if (updated == null)
-                return BadRequest(new { message = "Failed to confirm delivery. Ensure the order is in the correct status." });
+                return BadRequest(new { message = "Failed to confirm delivery." });
 
             return Ok(updated);
         }
 
         // POST: api/Delivery/{deliveryPersonId}/cancel/{deliveryId}
-        // Cancel delivery → Order = back to ACCEPTED, Delivery = FAILED
         [HttpPost("{deliveryPersonId}/cancel/{deliveryId}")]
         public async Task<ActionResult> CancelDelivery(int deliveryPersonId, int deliveryId)
         {
@@ -253,7 +213,6 @@ namespace ShelfLife.Controllers
         }
 
         // GET: api/Delivery/{deliveryPersonId}/stats
-        // Get delivery person statistics
         [HttpGet("{deliveryPersonId}/stats")]
         public async Task<ActionResult<DeliveryPersonStatsDTO>> GetDeliveryPersonStats(int deliveryPersonId)
         {
