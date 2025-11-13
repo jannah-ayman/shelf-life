@@ -1,13 +1,20 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.IdentityModel.Tokens;
 using ShelfLife.DTOs;
 using ShelfLife.Models;
 using ShelfLife.Models.DTOs;
-using System.Security.Cryptography;
-using System.Text;
+using SixLabors.ImageSharp;
+using System.IdentityModel.Tokens.Jwt;
+using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Mail;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using YourApp.DTOs;
+
 
 namespace ShelfLife.Controllers
 {
@@ -16,9 +23,11 @@ namespace ShelfLife.Controllers
     public class AuthController : ControllerBase
     {
         private readonly DBcontext _context;
+        private readonly IConfiguration _configuration;
 
-        public AuthController(DBcontext context)
+        public AuthController(IConfiguration configuration, DBcontext context)
         {
+            _configuration = configuration;
             _context = context;
         }
 
@@ -56,6 +65,7 @@ namespace ShelfLife.Controllers
 
             return Ok(new { message = "User registered successfully", userId = user.UserID });
         }
+
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDTO loginDto)
         {
@@ -66,20 +76,38 @@ namespace ShelfLife.Controllers
             if (user == null)
                 return Unauthorized(new { message = "Invalid credentials." });
 
-            // Check password (assuming PasswordHash is stored as SHA256 hash)
             using var sha256 = SHA256.Create();
             var hashedPassword = Convert.ToBase64String(sha256.ComputeHash(Encoding.UTF8.GetBytes(loginDto.Password)));
 
             if (user.PasswordHash != hashedPassword)
                 return Unauthorized(new { message = "Invalid credentials." });
 
-            // TODO: Generate JWT token
-            var token = "fake-jwt-token"; // replace with real JWT generation
+            // --- Generate JWT ---
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+            new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
+            new Claim(ClaimTypes.Email, user.Email),
+            new Claim(ClaimTypes.Name, user.Name),
+            new Claim(ClaimTypes.Role, user.UserType.ToString())
+        }),
+                Expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"])),
+                Issuer = _configuration["Jwt:Issuer"],
+                Audience = _configuration["Jwt:Audience"],
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            var jwt = tokenHandler.WriteToken(token);
 
             return Ok(new
             {
                 message = "Login successful",
-                token,
+                token = jwt,
                 user = new
                 {
                     user.UserID,
