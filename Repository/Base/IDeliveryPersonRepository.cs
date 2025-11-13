@@ -11,5 +11,6 @@ namespace ShelfLife.Repository.Base
         Task<DeliveryPerson?> UpdateDeliveryPersonAsync(DeliveryPerson deliveryPerson);
         Task<bool> DeleteDeliveryPersonAsync(int deliveryPersonId);
         Task<bool> UpdateAvailabilityAsync(int deliveryPersonId, bool isAvailable);
+        Task<decimal> UpdateAverageRatingAsync(int deliveryPersonId);
     }
 }

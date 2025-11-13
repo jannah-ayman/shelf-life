@@ -21,6 +21,7 @@ namespace ShelfLife.Repository.Base
 
         // Helper methods for order creation
         Task<BookListing?> GetListingByIdAsync(int listingId);
+        Task<User?> GetUserByIdAsync(int userId);
         Task<bool> CanUserSwapAsync(int userId);
         Task<bool> IsListingAvailableForOrderAsync(int listingId, int quantity);
 

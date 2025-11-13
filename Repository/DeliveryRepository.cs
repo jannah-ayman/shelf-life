@@ -211,6 +211,9 @@ namespace ShelfLife.Repository
             if (delivery == null)
                 return null;
 
+            if (delivery.Status != DeliveryStatus.PICKED_UP || delivery.Order.Status != OrderStatus.DELIVERING)
+                return null;
+
             delivery.DeliveryPersonConfirmed = true;
             delivery.PickedUpAt ??= DateTime.UtcNow;
 
@@ -237,6 +240,9 @@ namespace ShelfLife.Repository
                 .FirstOrDefaultAsync(d => d.DeliveryID == deliveryId);
 
             if (delivery == null)
+                return null;
+
+            if (delivery.Status != DeliveryStatus.PICKED_UP || delivery.Order.Status != OrderStatus.DELIVERING)
                 return null;
 
             delivery.BuyerConfirmed = true;

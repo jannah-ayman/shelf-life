@@ -19,13 +19,13 @@ namespace ShelfLife.Repository
         {
             return await _context.Orders
                 .Include(o => o.Listing)
-                    .ThenInclude(l => l.User)
+                    .ThenInclude(l => l.User!)
                 .Include(o => o.Buyer)
-                .Include(o => o.Delivery)
-                .ThenInclude(d => d.DeliveryPerson)
+                .Include(o => o.Delivery!)
+                    .ThenInclude(d => d.DeliveryPerson)
                 .Include(o => o.Payment)
                 .Include(o => o.Rating)
-                .Where(o => o.Listing.UserID == userId)
+                .Where(o => o.Listing != null && o.Listing.UserID == userId)
                 .OrderByDescending(o => o.CreatedAt)
                 .Select(o => MapToOrderDisplayDTO(o))
                 .ToListAsync();
@@ -35,13 +35,13 @@ namespace ShelfLife.Repository
         {
             return await _context.Orders
                 .Include(o => o.Listing)
-                    .ThenInclude(l => l.User)
+                    .ThenInclude(l => l.User!)
                 .Include(o => o.Buyer)
-                .Include(o => o.Delivery)
+                .Include(o => o.Delivery!)
                     .ThenInclude(d => d.DeliveryPerson)
                 .Include(o => o.Payment)
                 .Include(o => o.Rating)
-                .Where(o => o.BuyerID == userId)
+                .Where(o => o.Listing != null && o.BuyerID == userId)
                 .OrderByDescending(o => o.CreatedAt)
                 .Select(o => MapToOrderDisplayDTO(o))
                 .ToListAsync();
@@ -51,13 +51,13 @@ namespace ShelfLife.Repository
         {
             return await _context.Orders
                 .Include(o => o.Listing)
-                    .ThenInclude(l => l.User)
+                    .ThenInclude(l => l.User!)
                 .Include(o => o.Buyer)
-                .Include(o => o.Delivery)
+                .Include(o => o.Delivery!)
                     .ThenInclude(d => d.DeliveryPerson)
                 .Include(o => o.Payment)
                 .Include(o => o.Rating)
-                .Where(o => o.OrderID == orderId)
+                .Where(o => o.OrderID == orderId && o.Listing != null)
                 .Select(o => MapToOrderDisplayDTO(o))
                 .FirstOrDefaultAsync();
         }
@@ -124,6 +124,11 @@ namespace ShelfLife.Repository
                    listing.AvailabilityStatus == AvailabilityStatus.Available;
         }
 
+        public async Task<User?> GetUserByIdAsync(int userId)
+        {
+            return await _context.Users.FindAsync(userId);
+        }
+
         // Sale order creation - Auto-accepted
         public async Task<Order?> CreateSaleOrderAsync(int buyerId, CreateSaleOrderDTO dto)
         {
@@ -175,24 +180,6 @@ namespace ShelfLife.Repository
                     PaidAt = DateTime.UtcNow
                 };
                 _context.Payments.Add(payment);
-
-                // Create delivery record if address provided
-                if (!string.IsNullOrWhiteSpace(dto.DropoffAddress))
-                {
-                    var delivery = new Delivery
-                    {
-                        OrderID = order.OrderID,
-                        PickupAddress = listing.User.Address ?? string.Empty,
-                        PickupPhone = listing.User.Phone ?? string.Empty,
-                        DropoffAddress = dto.DropoffAddress,
-                        DropoffPhone = dto.DropoffPhone ?? string.Empty,
-                        DeliveryFee = deliveryFee,
-                        Status = DeliveryStatus.ASSIGNED,
-                        DeliveryPersonConfirmed = false,
-                        BuyerConfirmed = false
-                    };
-                    _context.Deliveries.Add(delivery);
-                }
 
                 // Reserve quantity
                 listing.AvailableQuantity -= dto.Quantity;
@@ -269,24 +256,6 @@ namespace ShelfLife.Repository
                     CreatedAt = DateTime.UtcNow
                 };
                 _context.Negotiations.Add(negotiation);
-
-                // Create delivery if address provided
-                if (!string.IsNullOrWhiteSpace(dto.DropoffAddress))
-                {
-                    var delivery = new Delivery
-                    {
-                        OrderID = order.OrderID,
-                        PickupAddress = requestedListing.User.Address ?? string.Empty,
-                        PickupPhone = requestedListing.User.Phone ?? string.Empty,
-                        DropoffAddress = dto.DropoffAddress,
-                        DropoffPhone = dto.DropoffPhone ?? string.Empty,
-                        DeliveryFee = deliveryFee,
-                        Status = DeliveryStatus.ASSIGNED,
-                        DeliveryPersonConfirmed = false,
-                        BuyerConfirmed = false
-                    };
-                    _context.Deliveries.Add(delivery);
-                }
 
                 // Reserve quantities (pending seller acceptance)
                 requestedListing.AvailableQuantity -= dto.Quantity;
@@ -370,22 +339,26 @@ namespace ShelfLife.Repository
         // Helper method to map to DTO
         private static OrderDisplayDTO MapToOrderDisplayDTO(Order o)
         {
+            var listing = o.Listing;
+            var buyer = o.Buyer;
+            var seller = listing?.User;
+
             return new OrderDisplayDTO
             {
                 OrderID = o.OrderID,
                 OrderType = o.OrderType,
                 Status = o.Status,
                 ListingID = o.ListingID,
-                BookTitle = o.Listing.Title,
-                BookAuthor = o.Listing.Author,
-                BookCondition = o.Listing.Condition,
-                BookPhotoURL = o.Listing.PhotoURLs,
-                SellerID = o.Listing.UserID,
-                SellerName = o.Listing.User.Name,
-                SellerRating = o.Listing.User.AverageRating,
+                BookTitle = listing?.Title ?? string.Empty,
+                BookAuthor = listing?.Author,
+                BookCondition = listing?.Condition ?? BookCondition.GOOD,
+                BookPhotoURL = listing?.PhotoURLs,
+                SellerID = seller?.UserID ?? listing?.UserID ?? 0,
+                SellerName = seller?.Name,
+                SellerRating = seller?.AverageRating ?? 0,
                 BuyerID = o.BuyerID,
-                BuyerName = o.Buyer.Name,
-                BuyerRating = o.Buyer.AverageRating,
+                BuyerName = buyer?.Name,
+                BuyerRating = buyer?.AverageRating ?? 0,
                 Price = o.Price,
                 DeliveryFee = o.DeliveryFee,
                 Quantity = o.Quantity,

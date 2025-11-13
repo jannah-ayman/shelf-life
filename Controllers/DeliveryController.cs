@@ -184,10 +184,17 @@ namespace ShelfLife.Controllers
             if (delivery.DeliveryPersonID != deliveryPersonId)
                 return Forbid();
 
+            if (delivery.Status != DeliveryStatus.PICKED_UP)
+                return BadRequest(new { message = "Delivery must be picked up before it can be confirmed." });
+
+            var order = await _orderRepo.GetOrderByIdAsync(delivery.OrderID);
+            if (order == null || order.Status != OrderStatus.DELIVERING)
+                return BadRequest(new { message = "Order must be in DELIVERING status before confirming delivery." });
+
             // Completes the delivery and order
             var updated = await _deliveryRepo.ConfirmDeliveryByPersonAsync(deliveryId);
             if (updated == null)
-                return StatusCode(500, new { message = "Failed to confirm delivery" });
+                return BadRequest(new { message = "Failed to confirm delivery. Ensure the order is in the correct status." });
 
             return Ok(updated);
         }
@@ -206,9 +213,15 @@ namespace ShelfLife.Controllers
             if (order == null || order.BuyerID != buyerId)
                 return Forbid();
 
+            if (delivery.Status != DeliveryStatus.PICKED_UP)
+                return BadRequest(new { message = "Delivery must be picked up before it can be confirmed." });
+
+            if (order.Status != OrderStatus.DELIVERING)
+                return BadRequest(new { message = "Order must be in DELIVERING status before confirming delivery." });
+
             var updated = await _deliveryRepo.ConfirmDeliveryByBuyerAsync(deliveryId);
             if (updated == null)
-                return StatusCode(500, new { message = "Failed to confirm delivery" });
+                return BadRequest(new { message = "Failed to confirm delivery. Ensure the order is in the correct status." });
 
             return Ok(updated);
         }

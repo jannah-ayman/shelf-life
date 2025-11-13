@@ -24,9 +24,20 @@ namespace ShelfLife.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            var buyer = await _orderRepo.GetUserByIdAsync(buyerId);
+            if (buyer == null)
+                return NotFound(new { message = "Buyer not found." });
+
             var listing = await _orderRepo.GetListingByIdAsync(dto.ListingID);
             if (listing == null)
                 return NotFound(new { message = "Listing not found." });
+
+            var seller = listing.User;
+            if (seller == null)
+                return StatusCode(500, new { message = "Listing owner information is unavailable." });
+
+            if (buyer.UserType == UserType.BUSINESS && seller.UserType == UserType.NORMAL_USER)
+                return StatusCode(403, new { message = "Business users cannot purchase listings from normal users." });
 
             if (!listing.IsSellable)
                 return BadRequest(new { message = "This listing is not sellable." });

@@ -24,7 +24,8 @@ namespace ShelfLife
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
             builder.Services.AddScoped<IDeliveryRepository, DeliveryRepository>();
-            builder.Services.AddScoped<IDeliveryPersonRepository, DeliveryPersonRepository>(); // NEW
+            builder.Services.AddScoped<IDeliveryPersonRepository, DeliveryPersonRepository>();
+            builder.Services.AddScoped<IRatingRepository, RatingRepository>();
 
             // Controllers
             builder.Services.AddControllers()

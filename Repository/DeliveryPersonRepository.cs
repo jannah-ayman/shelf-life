@@ -77,5 +77,35 @@ namespace ShelfLife.Repository
             await _context.SaveChangesAsync();
             return true;
         }
+
+        public async Task<decimal> UpdateAverageRatingAsync(int deliveryPersonId)
+        {
+            // Get all ratings for deliveries made by this delivery person
+            // Relationship: Rating -> Order -> Delivery -> DeliveryPerson
+            var ratings = await _context.Ratings
+                .Include(r => r.Order)
+                .ThenInclude(o => o.Delivery)
+                .Where(r => r.Order.Delivery != null && 
+                           r.Order.Delivery.DeliveryPersonID.HasValue &&
+                           r.Order.Delivery.DeliveryPersonID.Value == deliveryPersonId)
+                .ToListAsync();
+
+            decimal avg = 0.0m;
+            
+            if (ratings.Any())
+            {
+                // Calculate average of DeliveryScore (not OrderScore)
+                avg = (decimal)ratings.Average(r => (double)r.DeliveryScore);
+            }
+
+            var deliveryPerson = await _context.DeliveryPeople.FindAsync(deliveryPersonId);
+            if (deliveryPerson != null)
+            {
+                deliveryPerson.AverageRating = avg;
+                await _context.SaveChangesAsync();
+            }
+
+            return avg;
+        }
     }
 }

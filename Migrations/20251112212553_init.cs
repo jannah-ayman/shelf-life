@@ -25,7 +25,7 @@ namespace ShelfLife.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "DeliveryPeople",
+                name: "DeliveryPerson",
                 columns: table => new
                 {
                     DeliveryPersonID = table.Column<int>(type: "int", nullable: false)
@@ -44,7 +44,7 @@ namespace ShelfLife.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_DeliveryPeople", x => x.DeliveryPersonID);
+                    table.PrimaryKey("PK_DeliveryPerson", x => x.DeliveryPersonID);
                 });
 
             migrationBuilder.CreateTable(
@@ -88,7 +88,6 @@ namespace ShelfLife.Migrations
                     PhotoURLs = table.Column<string>(type: "nvarchar(2000)", maxLength: 2000, nullable: true),
                     City = table.Column<string>(type: "nvarchar(100)", maxLength: 100, nullable: true),
                     IsSellable = table.Column<bool>(type: "bit", nullable: false),
-                    IsDonatable = table.Column<bool>(type: "bit", nullable: false),
                     IsSwappable = table.Column<bool>(type: "bit", nullable: false),
                     Quantity = table.Column<int>(type: "int", nullable: false),
                     AvailableQuantity = table.Column<int>(type: "int", nullable: false),
@@ -181,6 +180,8 @@ namespace ShelfLife.Migrations
                     DeliveryFee = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
                     PickedUpAt = table.Column<DateTime>(type: "datetime2", nullable: true),
+                    DeliveryPersonConfirmed = table.Column<bool>(type: "bit", nullable: false),
+                    BuyerConfirmed = table.Column<bool>(type: "bit", nullable: false),
                     DeliveredAt = table.Column<DateTime>(type: "datetime2", nullable: true),
                     OrderID = table.Column<int>(type: "int", nullable: false)
                 },
@@ -188,9 +189,9 @@ namespace ShelfLife.Migrations
                 {
                     table.PrimaryKey("PK_Deliveries", x => x.DeliveryID);
                     table.ForeignKey(
-                        name: "FK_Deliveries_DeliveryPeople_DeliveryPersonID",
+                        name: "FK_Deliveries_DeliveryPerson_DeliveryPersonID",
                         column: x => x.DeliveryPersonID,
-                        principalTable: "DeliveryPeople",
+                        principalTable: "DeliveryPerson",
                         principalColumn: "DeliveryPersonID",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
@@ -352,7 +353,7 @@ namespace ShelfLife.Migrations
                 name: "Ratings");
 
             migrationBuilder.DropTable(
-                name: "DeliveryPeople");
+                name: "DeliveryPerson");
 
             migrationBuilder.DropTable(
                 name: "Orders");

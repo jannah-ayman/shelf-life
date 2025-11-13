@@ -12,8 +12,8 @@ using ShelfLife.Models;
 namespace ShelfLife.Migrations
 {
     [DbContext(typeof(DBcontext))]
-    [Migration("20251112205628_removed_donation_details")]
-    partial class removed_donation_details
+    [Migration("20251112212553_init")]
+    partial class init
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
