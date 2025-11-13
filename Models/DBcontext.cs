@@ -17,6 +17,7 @@ namespace ShelfLife.Models
         public DbSet<Rating> Ratings { get; set; }
         public DbSet<Negotiation> Negotiations { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

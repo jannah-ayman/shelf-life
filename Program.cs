@@ -2,6 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using ShelfLife.Models;
 using ShelfLife.Repository;
 using ShelfLife.Repository.Base;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.Security.Claims;
 
 namespace ShelfLife
 {
@@ -11,15 +15,12 @@ namespace ShelfLife
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            // --- Add DbContext
             builder.Services.AddDbContext<DBcontext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("Myconection")));
 
-            // REPOSITORIES
-            // Base generic repository
+            // --- Add Repositories
             builder.Services.AddTransient(typeof(Irepo<>), typeof(MainRepository<>));
-
-            // Specific repositories
             builder.Services.AddScoped<IBookListingRepository, BookListingRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IOrderRepository, OrderRepository>();
@@ -28,14 +29,13 @@ namespace ShelfLife
             builder.Services.AddScoped<IRatingRepository, RatingRepository>();
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 
-            // Controllers
-            builder.Services.AddControllers()
-                .AddJsonOptions(options =>
-                {
-                    options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
-                });
+            // --- Controllers
+            builder.Services.AddControllers().AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+            });
 
-            // CORS policy (if needed for frontend)
+            // --- CORS
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowAll", builder =>
@@ -46,7 +46,7 @@ namespace ShelfLife
                 });
             });
 
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+            // --- Swagger
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen(c =>
             {
@@ -58,16 +58,37 @@ namespace ShelfLife
                 });
             });
 
+            // --- JWT Authentication (must be BEFORE builder.Build())
+            builder.Services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                var key = Encoding.ASCII.GetBytes(builder.Configuration["Jwt:Key"]);
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                    ValidAudience = builder.Configuration["Jwt:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(key)
+                };
+            });
+
             var app = builder.Build();
 
-            // Seed default categories on startup
+            // --- Seed default categories
             using (var scope = app.Services.CreateScope())
             {
                 var categoryRepo = scope.ServiceProvider.GetRequiredService<ICategoryRepository>();
                 await categoryRepo.SeedDefaultCategoriesAsync();
             }
 
-            // Configure the HTTP request pipeline.
+            // --- Middleware pipeline
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
@@ -78,19 +99,17 @@ namespace ShelfLife
                 });
             }
 
-            // Enable static files for image serving
-            app.UseStaticFiles();
-
             app.UseHttpsRedirection();
-
-            // Enable CORS
+            app.UseStaticFiles();
             app.UseCors("AllowAll");
 
+            app.UseAuthentication(); // must be before Authorization
             app.UseAuthorization();
 
             app.MapControllers();
 
             app.Run();
+
         }
     }
 }
