@@ -1,0 +1,33 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>SignalR Test</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/7.0.5/signalr.min.js"></script>
+</head>
+<body>
+    <h2>SignalR Notification Test</h2>
+    <button id="sendBtn">Send Test Notification</button>
+
+    <ul id="messagesList"></ul>
+
+    <script>
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("/notificationHub")
+            .build();
+
+        connection.on("ReceiveNotification", (user, message) => {
+            const li = document.createElement("li");
+            li.textContent = `${user}: ${message}`;
+            document.getElementById("messagesList").appendChild(li);
+        });
+
+        connection.start().then(() => {
+            console.log("Connected to SignalR hub");
+
+            document.getElementById("sendBtn").addEventListener("click", () => {
+                connection.invoke("SendNotification", "Sohila", "Test notification from client");
+            });
+        }).catch(err => console.error(err));
+    </script>
+</body>
+</html>

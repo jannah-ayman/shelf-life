@@ -19,7 +19,7 @@ using YourApp.DTOs;
 namespace ShelfLife.Controllers
 {
     [Route("api/[controller]")]
-    [ApiController]
+    [ApiController] 
     public class AuthController : ControllerBase
     {
         private readonly DBcontext _context;
@@ -57,7 +57,7 @@ namespace ShelfLife.Controllers
                 City = dto.City,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
-                UserType = dto.UserType == "BUSINESS" ? UserType.BUSINESS : UserType.NORMAL_USER
+                UserType = dto.UserType == 0 ?  UserType.NORMAL_USER : UserType.BUSINESS
             };
 
             _context.Users.Add(user);

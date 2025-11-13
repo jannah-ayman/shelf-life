@@ -1,3 +1,4 @@
+using ShelfLife.Models;
 using System.ComponentModel.DataAnnotations;
 
 namespace ShelfLife.DTOs
@@ -22,6 +23,6 @@ namespace ShelfLife.DTOs
         public string? OrganizationDetails { get; set; }
 
         [Required]
-        public string UserType { get; set; } = "NORMAL_USER"; // "NORMAL_USER" or "BUSINESS"
+        public UserType UserType { get; set; } = UserType.NORMAL_USER;
     }
 }

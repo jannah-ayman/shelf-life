@@ -6,13 +6,13 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace ShelfLife.Migrations
 {
     /// <inheritdoc />
-    public partial class init : Migration
+    public partial class last : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Categories",
+                name: "Category",
                 columns: table => new
                 {
                     CategoryID = table.Column<int>(type: "int", nullable: false)
@@ -21,7 +21,7 @@ namespace ShelfLife.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Categories", x => x.CategoryID);
+                    table.PrimaryKey("PK_Category", x => x.CategoryID);
                 });
 
             migrationBuilder.CreateTable(
@@ -48,7 +48,22 @@ namespace ShelfLife.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Users",
+                name: "PasswordResetTokens",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Email = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Token = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Expiration = table.Column<DateTime>(type: "datetime2", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PasswordResetTokens", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "User",
                 columns: table => new
                 {
                     UserID = table.Column<int>(type: "int", nullable: false)
@@ -67,11 +82,11 @@ namespace ShelfLife.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Users", x => x.UserID);
+                    table.PrimaryKey("PK_User", x => x.UserID);
                 });
 
             migrationBuilder.CreateTable(
-                name: "BookListings",
+                name: "BookListing",
                 columns: table => new
                 {
                     BookListingID = table.Column<int>(type: "int", nullable: false)
@@ -96,23 +111,23 @@ namespace ShelfLife.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_BookListings", x => x.BookListingID);
+                    table.PrimaryKey("PK_BookListing", x => x.BookListingID);
                     table.ForeignKey(
-                        name: "FK_BookListings_Categories_CategoryID",
+                        name: "FK_BookListing_Category_CategoryID",
                         column: x => x.CategoryID,
-                        principalTable: "Categories",
+                        principalTable: "Category",
                         principalColumn: "CategoryID",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_BookListings_Users_UserID",
+                        name: "FK_BookListing_User_UserID",
                         column: x => x.UserID,
-                        principalTable: "Users",
+                        principalTable: "User",
                         principalColumn: "UserID",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Notifications",
+                name: "Notification",
                 columns: table => new
                 {
                     NotificationID = table.Column<int>(type: "int", nullable: false)
@@ -126,17 +141,17 @@ namespace ShelfLife.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Notifications", x => x.NotificationID);
+                    table.PrimaryKey("PK_Notification", x => x.NotificationID);
                     table.ForeignKey(
-                        name: "FK_Notifications_Users_UserID",
+                        name: "FK_Notification_User_UserID",
                         column: x => x.UserID,
-                        principalTable: "Users",
+                        principalTable: "User",
                         principalColumn: "UserID",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Orders",
+                name: "Order",
                 columns: table => new
                 {
                     OrderID = table.Column<int>(type: "int", nullable: false)
@@ -153,21 +168,21 @@ namespace ShelfLife.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Orders", x => x.OrderID);
+                    table.PrimaryKey("PK_Order", x => x.OrderID);
                     table.ForeignKey(
-                        name: "FK_Orders_BookListings_ListingID",
+                        name: "FK_Order_BookListing_ListingID",
                         column: x => x.ListingID,
-                        principalTable: "BookListings",
+                        principalTable: "BookListing",
                         principalColumn: "BookListingID");
                     table.ForeignKey(
-                        name: "FK_Orders_Users_BuyerID",
+                        name: "FK_Order_User_BuyerID",
                         column: x => x.BuyerID,
-                        principalTable: "Users",
+                        principalTable: "User",
                         principalColumn: "UserID");
                 });
 
             migrationBuilder.CreateTable(
-                name: "Deliveries",
+                name: "Delivery",
                 columns: table => new
                 {
                     DeliveryID = table.Column<int>(type: "int", nullable: false)
@@ -187,23 +202,23 @@ namespace ShelfLife.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Deliveries", x => x.DeliveryID);
+                    table.PrimaryKey("PK_Delivery", x => x.DeliveryID);
                     table.ForeignKey(
-                        name: "FK_Deliveries_DeliveryPerson_DeliveryPersonID",
+                        name: "FK_Delivery_DeliveryPerson_DeliveryPersonID",
                         column: x => x.DeliveryPersonID,
                         principalTable: "DeliveryPerson",
                         principalColumn: "DeliveryPersonID",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_Deliveries_Orders_OrderID",
+                        name: "FK_Delivery_Order_OrderID",
                         column: x => x.OrderID,
-                        principalTable: "Orders",
+                        principalTable: "Order",
                         principalColumn: "OrderID",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Negotiations",
+                name: "Negotiation",
                 columns: table => new
                 {
                     NegotiationID = table.Column<int>(type: "int", nullable: false)
@@ -215,23 +230,23 @@ namespace ShelfLife.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Negotiations", x => x.NegotiationID);
+                    table.PrimaryKey("PK_Negotiation", x => x.NegotiationID);
                     table.ForeignKey(
-                        name: "FK_Negotiations_BookListings_OfferedListingID",
+                        name: "FK_Negotiation_BookListing_OfferedListingID",
                         column: x => x.OfferedListingID,
-                        principalTable: "BookListings",
+                        principalTable: "BookListing",
                         principalColumn: "BookListingID",
                         onDelete: ReferentialAction.SetNull);
                     table.ForeignKey(
-                        name: "FK_Negotiations_Orders_OrderID",
+                        name: "FK_Negotiation_Order_OrderID",
                         column: x => x.OrderID,
-                        principalTable: "Orders",
+                        principalTable: "Order",
                         principalColumn: "OrderID",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Payments",
+                name: "Payment",
                 columns: table => new
                 {
                     PaymentID = table.Column<int>(type: "int", nullable: false)
@@ -243,17 +258,17 @@ namespace ShelfLife.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Payments", x => x.PaymentID);
+                    table.PrimaryKey("PK_Payment", x => x.PaymentID);
                     table.ForeignKey(
-                        name: "FK_Payments_Orders_OrderID",
+                        name: "FK_Payment_Order_OrderID",
                         column: x => x.OrderID,
-                        principalTable: "Orders",
+                        principalTable: "Order",
                         principalColumn: "OrderID",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "Ratings",
+                name: "Rating",
                 columns: table => new
                 {
                     RatingID = table.Column<int>(type: "int", nullable: false)
@@ -266,70 +281,70 @@ namespace ShelfLife.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Ratings", x => x.RatingID);
+                    table.PrimaryKey("PK_Rating", x => x.RatingID);
                     table.ForeignKey(
-                        name: "FK_Ratings_Orders_OrderID",
+                        name: "FK_Rating_Order_OrderID",
                         column: x => x.OrderID,
-                        principalTable: "Orders",
+                        principalTable: "Order",
                         principalColumn: "OrderID",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_BookListings_CategoryID",
-                table: "BookListings",
+                name: "IX_BookListing_CategoryID",
+                table: "BookListing",
                 column: "CategoryID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_BookListings_UserID",
-                table: "BookListings",
+                name: "IX_BookListing_UserID",
+                table: "BookListing",
                 column: "UserID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Deliveries_DeliveryPersonID",
-                table: "Deliveries",
+                name: "IX_Delivery_DeliveryPersonID",
+                table: "Delivery",
                 column: "DeliveryPersonID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Deliveries_OrderID",
-                table: "Deliveries",
+                name: "IX_Delivery_OrderID",
+                table: "Delivery",
                 column: "OrderID",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Negotiations_OfferedListingID",
-                table: "Negotiations",
+                name: "IX_Negotiation_OfferedListingID",
+                table: "Negotiation",
                 column: "OfferedListingID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Negotiations_OrderID",
-                table: "Negotiations",
+                name: "IX_Negotiation_OrderID",
+                table: "Negotiation",
                 column: "OrderID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Notifications_UserID",
-                table: "Notifications",
+                name: "IX_Notification_UserID",
+                table: "Notification",
                 column: "UserID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Orders_BuyerID",
-                table: "Orders",
+                name: "IX_Order_BuyerID",
+                table: "Order",
                 column: "BuyerID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Orders_ListingID",
-                table: "Orders",
+                name: "IX_Order_ListingID",
+                table: "Order",
                 column: "ListingID");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Payments_OrderID",
-                table: "Payments",
+                name: "IX_Payment_OrderID",
+                table: "Payment",
                 column: "OrderID",
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_Ratings_OrderID",
-                table: "Ratings",
+                name: "IX_Rating_OrderID",
+                table: "Rating",
                 column: "OrderID",
                 unique: true);
         }
@@ -338,34 +353,37 @@ namespace ShelfLife.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "Deliveries");
+                name: "Delivery");
 
             migrationBuilder.DropTable(
-                name: "Negotiations");
+                name: "Negotiation");
 
             migrationBuilder.DropTable(
-                name: "Notifications");
+                name: "Notification");
 
             migrationBuilder.DropTable(
-                name: "Payments");
+                name: "PasswordResetTokens");
 
             migrationBuilder.DropTable(
-                name: "Ratings");
+                name: "Payment");
+
+            migrationBuilder.DropTable(
+                name: "Rating");
 
             migrationBuilder.DropTable(
                 name: "DeliveryPerson");
 
             migrationBuilder.DropTable(
-                name: "Orders");
+                name: "Order");
 
             migrationBuilder.DropTable(
-                name: "BookListings");
+                name: "BookListing");
 
             migrationBuilder.DropTable(
-                name: "Categories");
+                name: "Category");
 
             migrationBuilder.DropTable(
-                name: "Users");
+                name: "User");
         }
     }
 }

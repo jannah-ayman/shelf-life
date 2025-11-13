@@ -12,8 +12,8 @@ using ShelfLife.Models;
 namespace ShelfLife.Migrations
 {
     [DbContext(typeof(DBcontext))]
-    [Migration("20251113151422_Addresettokentable")]
-    partial class Addresettokentable
+    [Migration("20251113164220_last")]
+    partial class last
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
