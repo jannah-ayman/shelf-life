@@ -82,7 +82,7 @@ namespace ShelfLife.Controllers
             if (user.PasswordHash != hashedPassword)
                 return Unauthorized(new { message = "Invalid credentials." });
 
-            // --- Generate JWT ---
+            // --- Generate JWT --- 
             var tokenHandler = new JwtSecurityTokenHandler();
             var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
 

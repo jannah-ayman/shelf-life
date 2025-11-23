@@ -192,7 +192,6 @@ namespace ShelfLife.Repository
                    listing.AvailableQuantity >= quantity &&
                    listing.AvailabilityStatus == AvailabilityStatus.Available;
         }
-
         public async Task<User?> GetUserByIdAsync(int userId)
         {
             return await _context.Users.FindAsync(userId);
@@ -216,6 +215,10 @@ namespace ShelfLife.Repository
                     return null;
 
                 if (listing.UserID == buyerId)
+                    return null;
+
+                // ⭐ IMPORTANT: Check if there's enough quantity
+                if (listing.AvailableQuantity < dto.Quantity)
                     return null;
 
                 // Calculate fees based on seller type
@@ -253,8 +256,15 @@ namespace ShelfLife.Repository
                 };
                 _context.Payments.Add(payment);
 
-                // Reserve quantity
+                // ⭐ Reserve quantity and update availability status
                 listing.AvailableQuantity -= dto.Quantity;
+
+                // ⭐ If all items are sold, mark as Sold
+                if (listing.AvailableQuantity <= 0)
+                {
+                    listing.AvailabilityStatus = AvailabilityStatus.Sold;
+                }
+
                 _context.BookListings.Update(listing);
 
                 await _context.SaveChangesAsync();
@@ -418,6 +428,70 @@ namespace ShelfLife.Repository
             }
         }
 
+        // ⭐ NEW METHOD 1: Mark order as delivering (seller action)
+        public async Task<bool> MarkAsDeliveringAsync(int orderId)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order == null)
+                return false;
+
+            // Only ACCEPTED orders can move to DELIVERING
+            if (order.Status != OrderStatus.ACCEPTED)
+                return false;
+
+            order.Status = OrderStatus.DELIVERING;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        // ⭐ NEW METHOD 2: Seller confirms delivery
+        public async Task<bool> ConfirmDeliverySellerAsync(int orderId)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order == null)
+                return false;
+
+            // Order must be in DELIVERING status
+            if (order.Status != OrderStatus.DELIVERING)
+                return false;
+
+            order.SellerConfirmed = true;
+
+            // If both parties confirmed, mark as completed
+            if (order.BuyerConfirmed && order.SellerConfirmed)
+            {
+                order.Status = OrderStatus.COMPLETED;
+                order.CompletedAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        // ⭐ NEW METHOD 3: Buyer confirms delivery
+        public async Task<bool> ConfirmDeliveryBuyerAsync(int orderId)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order == null)
+                return false;
+
+            // Order must be in DELIVERING status
+            if (order.Status != OrderStatus.DELIVERING)
+                return false;
+
+            order.BuyerConfirmed = true;
+
+            // If both parties confirmed, mark as completed
+            if (order.BuyerConfirmed && order.SellerConfirmed)
+            {
+                order.Status = OrderStatus.COMPLETED;
+                order.CompletedAt = DateTime.UtcNow;
+            }
+
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         // Helper method to map to DTO
         private static OrderDisplayDTO MapToOrderDisplayDTO(Order o)
         {
@@ -454,7 +528,10 @@ namespace ShelfLife.Repository
                 PaidAt = o.Payment?.PaidAt,
                 OrderScore = o.Rating?.OrderScore,
                 DeliveryScore = o.Rating?.DeliveryScore,
-                RatingComment = o.Rating?.Comment
+                RatingComment = o.Rating?.Comment,
+
+                BuyerConfirmed = o.BuyerConfirmed,
+                SellerConfirmed = o.SellerConfirmed
             };
         }
     }

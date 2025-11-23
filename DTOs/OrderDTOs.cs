@@ -48,6 +48,10 @@ namespace ShelfLife.DTOs
         public int? OrderScore { get; set; }
         public int? DeliveryScore { get; set; }
         public string? RatingComment { get; set; }
+
+        // ⭐ NEW: Delivery confirmation flags
+        public bool BuyerConfirmed { get; set; }
+        public bool SellerConfirmed { get; set; }
     }
 
     // DTO for creating a sale order

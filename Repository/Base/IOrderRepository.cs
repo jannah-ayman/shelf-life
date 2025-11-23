@@ -34,5 +34,9 @@ namespace ShelfLife.Repository.Base
 
         // Swap response method
         Task<bool> RespondToSwapAsync(int orderId, bool accept);
+        Task<bool> MarkAsDeliveringAsync(int orderId);
+        Task<bool> ConfirmDeliverySellerAsync(int orderId);
+        Task<bool> ConfirmDeliveryBuyerAsync(int orderId);
+
     }
 }

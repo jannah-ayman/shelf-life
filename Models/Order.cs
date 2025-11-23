@@ -19,6 +19,7 @@ namespace ShelfLife.Models
         DELIVERING,       // Order is being delivered
         COMPLETED         // Order completed
     }
+
     [Table("Order")]
     public class Order
     {
@@ -46,13 +47,17 @@ namespace ShelfLife.Models
         public int Quantity { get; set; } = 1;
 
         public DateTime CreatedAt { get; set; }
+
         public DateTime? CompletedAt { get; set; }
+
+        // NEW: Add these two properties
+        public bool BuyerConfirmed { get; set; } = false;
+        public bool SellerConfirmed { get; set; } = false;
 
         // 1:1 dependents (FKs live on the dependent)
         public Payment? Payment { get; set; }
         public Rating? Rating { get; set; }
         public Delivery? Delivery { get; set; }
-
         public ICollection<Negotiation> Negotiations { get; set; } = new List<Negotiation>();
     }
 }

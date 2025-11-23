@@ -77,6 +77,23 @@ namespace ShelfLife
                     ValidAudience = builder.Configuration["Jwt:Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(key)
                 };
+
+                // DEBUG: Log authentication events
+                options.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        Console.WriteLine($"Authentication failed: {context.Exception.Message}");
+                        return Task.CompletedTask;
+                    },
+                    OnTokenValidated = context =>
+                    {
+                        Console.WriteLine("Token validated successfully");
+                        var claims = context.Principal?.Claims.Select(c => $"{c.Type}: {c.Value}");
+                        Console.WriteLine($"Claims: {string.Join(", ", claims ?? Array.Empty<string>())}");
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
             var app = builder.Build();
@@ -109,7 +126,6 @@ namespace ShelfLife
             app.MapControllers();
 
             app.Run();
-
         }
     }
 }

@@ -1,12 +1,16 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ShelfLife.DTOs;
 using ShelfLife.Models;
 using ShelfLife.Repository.Base;
+using System.Security.Claims;
 
 namespace ShelfLife.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize] // Add this line!
+
     public class OrdersController : ControllerBase
     {
         private readonly IOrderRepository _orderRepo;
@@ -18,11 +22,27 @@ namespace ShelfLife.Controllers
 
         // POST: api/Orders/sale
         // Sale orders are auto-accepted (ACCEPTED status immediately)
+        // POST: api/Orders/sale
+        [Authorize]
         [HttpPost("sale")]
-        public async Task<ActionResult<OrderDisplayDTO>> CreateSaleOrder([FromQuery] int buyerId, [FromBody] CreateSaleOrderDTO dto)
+        public async Task<ActionResult<OrderDisplayDTO>> CreateSaleOrder([FromBody] CreateSaleOrderDTO dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
+
+            // Extract buyerId from JWT claims - Check for the full claim type URI
+            var buyerIdClaim = User.Claims.FirstOrDefault(c =>
+                c.Type == ClaimTypes.NameIdentifier ||
+                c.Type == "nameid" ||
+                c.Type == "sub");
+
+            if (buyerIdClaim == null)
+            {
+                return Unauthorized(new { message = "User not authenticated." });
+            }
+
+            if (!int.TryParse(buyerIdClaim.Value, out int buyerId))
+                return Unauthorized(new { message = "Invalid user ID in token." });
 
             var buyer = await _orderRepo.GetUserByIdAsync(buyerId);
             if (buyer == null)
@@ -55,6 +75,7 @@ namespace ShelfLife.Controllers
             var orderDisplay = await _orderRepo.GetOrderByIdAsync(order.OrderID);
             return CreatedAtAction(nameof(GetOrderById), new { id = order.OrderID }, orderDisplay);
         }
+
 
         // POST: api/Orders/swap
         // Swap orders start with NEGOTIATING status
@@ -156,5 +177,39 @@ namespace ShelfLife.Controllers
                 return NotFound(new { message = "Order not found" });
             return NoContent();
         }
+
+        [HttpPost("{orderId}/mark-delivering")]
+        public async Task<IActionResult> MarkAsDelivering(int orderId)
+        {
+            var success = await _orderRepo.MarkAsDeliveringAsync(orderId);
+            if (!success)
+                return BadRequest(new { message = "Failed to mark order as delivering. Order must be in ACCEPTED status." });
+
+            var order = await _orderRepo.GetOrderByIdAsync(orderId);
+            return Ok(order);
+        }
+
+        [HttpPost("{orderId}/confirm-delivery-seller")]
+        public async Task<IActionResult> ConfirmDeliverySeller(int orderId)
+        {
+            var success = await _orderRepo.ConfirmDeliverySellerAsync(orderId);
+            if (!success)
+                return BadRequest(new { message = "Failed to confirm delivery. Order must be in DELIVERING status." });
+
+            var order = await _orderRepo.GetOrderByIdAsync(orderId);
+            return Ok(order);
+        }
+
+        [HttpPost("{orderId}/confirm-delivery-buyer")]
+        public async Task<IActionResult> ConfirmDeliveryBuyer(int orderId)
+        {
+            var success = await _orderRepo.ConfirmDeliveryBuyerAsync(orderId);
+            if (!success)
+                return BadRequest(new { message = "Failed to confirm delivery. Order must be in DELIVERING status." });
+
+            var order = await _orderRepo.GetOrderByIdAsync(orderId);
+            return Ok(order);
+        }
+
     }
 }
