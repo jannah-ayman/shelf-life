@@ -1,12 +1,9 @@
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.IdentityModel.Tokens;
 using ShelfLife.DTOs;
 using ShelfLife.Models;
 using ShelfLife.Models.DTOs;
-using SixLabors.ImageSharp;
-using System.IdentityModel.Tokens.Jwt;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net;
 using System.Net.Mail;
@@ -14,7 +11,6 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using YourApp.DTOs;
-
 
 namespace ShelfLife.Controllers
 {
@@ -31,23 +27,26 @@ namespace ShelfLife.Controllers
             _context = context;
         }
 
+        // ---------------------------------------------
+        //                REGISTER
+        // ---------------------------------------------
         [HttpPost("register")]
         public async Task<IActionResult> Register(UserRegisterDTO dto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // Check if email already exists
+            // Check if email exists
             var existingUser = await _context.Users
                 .FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower());
 
             if (existingUser != null)
                 return Conflict(new { message = "Email already registered" });
 
-            // Hash password
+            // Create hash
             string passwordHash = HashPassword(dto.Password);
 
-            // Map DTO to User
+            // Map DTO → User
             var user = new User
             {
                 Name = dto.Name,
@@ -57,57 +56,69 @@ namespace ShelfLife.Controllers
                 City = dto.City,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow,
-                UserType = dto.UserType == "BUSINESS" ? UserType.BUSINESS : UserType.NORMAL_USER
+                UserType = dto.UserType == "BUSINESS"
+                    ? UserType.BUSINESS
+                    : UserType.NORMAL_USER
             };
 
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "User registered successfully", userId = user.UserID });
+            return Ok(new
+            {
+                message = "User registered successfully",
+                userId = user.UserID
+            });
         }
 
+        // ---------------------------------------------
+        //                LOGIN
+        // ---------------------------------------------
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDTO loginDto)
         {
-            if (loginDto == null || string.IsNullOrEmpty(loginDto.Email) || string.IsNullOrEmpty(loginDto.Password))
+            if (loginDto == null ||
+                string.IsNullOrEmpty(loginDto.Email) ||
+                string.IsNullOrEmpty(loginDto.Password))
+            {
                 return BadRequest(new { message = "Email and password are required." });
+            }
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginDto.Email);
             if (user == null)
                 return Unauthorized(new { message = "Invalid credentials." });
 
-            using var sha256 = SHA256.Create();
-            var hashedPassword = Convert.ToBase64String(sha256.ComputeHash(Encoding.UTF8.GetBytes(loginDto.Password)));
+            var hashedPassword = HashPassword(loginDto.Password);
 
             if (user.PasswordHash != hashedPassword)
                 return Unauthorized(new { message = "Invalid credentials." });
 
-            // --- Generate JWT --- 
+            // Generate JWT token
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration["Jwt:Key"]);
+            var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]);
 
+           
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new[]
                 {
-            new Claim(ClaimTypes.NameIdentifier, user.UserID.ToString()),
-            new Claim(ClaimTypes.Email, user.Email),
-            new Claim(ClaimTypes.Name, user.Name),
-            new Claim(ClaimTypes.Role, user.UserType.ToString())
-        }),
+        new Claim("userId", user.UserID.ToString()),   
+        new Claim(ClaimTypes.Email, user.Email),
+        new Claim(ClaimTypes.Name, user.Name),
+        new Claim(ClaimTypes.Role, user.UserType.ToString())
+    }),
                 Expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"])),
                 Issuer = _configuration["Jwt:Issuer"],
                 Audience = _configuration["Jwt:Audience"],
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
-            var jwt = tokenHandler.WriteToken(token);
 
             return Ok(new
             {
                 message = "Login successful",
-                token = jwt,
+                token = tokenHandler.WriteToken(token),
                 user = new
                 {
                     user.UserID,
@@ -117,14 +128,20 @@ namespace ShelfLife.Controllers
                 }
             });
         }
+
+        // ---------------------------------------------
+        //          FORGOT PASSWORD (SEND EMAIL)
+        // ---------------------------------------------
         [HttpPost("forgot-password")]
         public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDTO dto)
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == dto.Email);
-            if (user == null)
-                return Ok(new { message = "If an account exists, you�ll receive a reset link." });
 
-            // Delete old tokens for same user
+            // Always return Ok for security
+            if (user == null)
+                return Ok(new { message = "If an account exists, you’ll receive a reset link." });
+
+            // Remove old tokens
             var oldTokens = _context.PasswordResetTokens.Where(t => t.Email == dto.Email);
             _context.PasswordResetTokens.RemoveRange(oldTokens);
 
@@ -148,6 +165,9 @@ namespace ShelfLife.Controllers
             return Ok(new { message = "Reset link sent if account exists." });
         }
 
+        // ---------------------------------------------
+        //              RESET PASSWORD
+        // ---------------------------------------------
         [HttpPost("reset-password")]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDTO dto)
         {
@@ -161,45 +181,47 @@ namespace ShelfLife.Controllers
             if (user == null)
                 return BadRequest(new { message = "User not found." });
 
-            // Hash the new password
+            // Update password
             user.PasswordHash = HashPassword(dto.NewPassword);
+
+            // Remove used token
             _context.PasswordResetTokens.Remove(token);
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Password reset successful." });
         }
 
-
+        // ---------------------------------------------
+        //          SEND EMAIL (GMAIL SMTP)
+        // ---------------------------------------------
         private async Task SendEmailAsync(string toEmail, string subject, string body)
-            {
-                string fromEmail = "aabdula2712@gmail.com";
-                string fromPassword = "eblmolyvvxfyrqef";
-
-                var mail = new MailMessage(fromEmail, toEmail, subject, body)
-                {
-                    IsBodyHtml = true
-                };
-
-                using var smtp = new SmtpClient("smtp.gmail.com")
-                {
-                    Port = 587,
-                    Credentials = new NetworkCredential(fromEmail, fromPassword),
-                    EnableSsl = true
-                };
-
-                await smtp.SendMailAsync(mail);
-            }
-
-
-
-    private string HashPassword(string password)
         {
-            using var sha256 = SHA256.Create();
-            var bytes = Encoding.UTF8.GetBytes(password);
-            var hash = sha256.ComputeHash(bytes);
-            return Convert.ToBase64String(hash);
+            string fromEmail = "aabdula2712@gmail.com";
+            string fromPassword = "eblmolyvvxfyrqef";
+
+            var mail = new MailMessage(fromEmail, toEmail, subject, body)
+            {
+                IsBodyHtml = true
+            };
+
+            using var smtp = new SmtpClient("smtp.gmail.com")
+            {
+                Port = 587,
+                Credentials = new NetworkCredential(fromEmail, fromPassword),
+                EnableSsl = true
+            };
+
+            await smtp.SendMailAsync(mail);
         }
 
-
+        // ---------------------------------------------
+        //          HASH PASSWORD (SHA256)
+        // ---------------------------------------------
+        private string HashPassword(string password)
+        {
+            using var sha256 = SHA256.Create();
+            var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+            return Convert.ToBase64String(hash);
+        }
     }
 }

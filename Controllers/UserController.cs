@@ -1,8 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ShelfLife.DTOs;
 using ShelfLife.Models;
 using ShelfLife.Repository;
 using ShelfLife.Repository.Base;
+using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace ShelfLife.Controllers
 {
@@ -26,6 +30,7 @@ namespace ShelfLife.Controllers
 
         // GET: api/User/{userId}/profile
         [HttpGet("{userId}/profile")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult<UserProfileDTO>> GetUserProfile(int userId)
         {
             var profile = await _userRepo.GetUserProfileAsync(userId);
@@ -37,6 +42,7 @@ namespace ShelfLife.Controllers
 
         // PUT: api/User/{userId}/profile
         [HttpPut("{userId}/profile")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult<UserProfileDTO>> UpdateUserProfile(int userId, [FromBody] UpdateUserProfileDTO updateDto)
         {
             if (!ModelState.IsValid)
@@ -64,6 +70,7 @@ namespace ShelfLife.Controllers
 
         // DELETE: api/User/{userId}
         [HttpDelete("{userId}")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult> DeleteUserAccount(int userId)
         {
             var user = await _userRepo.GetUserByIdAsync(userId);
@@ -79,13 +86,15 @@ namespace ShelfLife.Controllers
 
         // POST: api/User/{userId}/change-password
         [HttpPost("{userId}/change-password")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult> ChangePassword(int userId, [FromBody] ChangePasswordDTO passwordDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var currentPasswordHash = passwordDto.CurrentPassword;
-            var newPasswordHash = passwordDto.NewPassword;
+            // FIXED: Hash the passwords before comparing/storing
+            var currentPasswordHash = HashPassword(passwordDto.CurrentPassword);
+            var newPasswordHash = HashPassword(passwordDto.NewPassword);
 
             var success = await _userRepo.ChangePasswordAsync(userId, currentPasswordHash, newPasswordHash);
             if (!success)
@@ -96,6 +105,7 @@ namespace ShelfLife.Controllers
 
         // GET: api/User/{userId}/stats
         [HttpGet("{userId}/stats")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult<UserDashboardStatsDTO>> GetDashboardStats(int userId)
         {
             var stats = await _userRepo.GetDashboardStatsAsync(userId);
@@ -104,6 +114,7 @@ namespace ShelfLife.Controllers
 
         // GET: api/User/{userId}/listings
         [HttpGet("{userId}/listings")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult<IEnumerable<BookListingDisplayDTO>>> GetUserListings(int userId)
         {
             var listings = await _listingRepo.GetUserListingsAsync(userId);
@@ -112,6 +123,7 @@ namespace ShelfLife.Controllers
 
         // GET: api/User/{userId}/listings/{listingId}
         [HttpGet("{userId}/listings/{listingId}")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult<BookListingDetailDTO>> GetListingDetail(int userId, int listingId)
         {
             var ownsListing = await _listingRepo.UserOwnsListingAsync(userId, listingId);
@@ -127,6 +139,7 @@ namespace ShelfLife.Controllers
 
         // POST: api/User/{userId}/listings
         [HttpPost("{userId}/listings")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult<BookListingDetailDTO>> CreateListing(int userId, [FromBody] CreateBookListingDTO createDto)
         {
             if (!ModelState.IsValid)
@@ -187,6 +200,7 @@ namespace ShelfLife.Controllers
 
         // PUT: api/User/{userId}/listings/{listingId}
         [HttpPut("{userId}/listings/{listingId}")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult<BookListingDetailDTO>> UpdateListing(int userId, int listingId, [FromBody] UpdateBookListingDTO updateDto)
         {
             if (!ModelState.IsValid)
@@ -252,6 +266,7 @@ namespace ShelfLife.Controllers
 
         // DELETE: api/User/{userId}/listings/{listingId}
         [HttpDelete("{userId}/listings/{listingId}")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult> DeleteListing(int userId, int listingId)
         {
             var ownsListing = await _listingRepo.UserOwnsListingAsync(userId, listingId);
@@ -267,6 +282,7 @@ namespace ShelfLife.Controllers
 
         // GET: api/User/{userId}/orders/incoming
         [HttpGet("{userId}/orders/incoming")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult<IEnumerable<OrderDisplayDTO>>> GetIncomingOrders(int userId)
         {
             var orders = await _orderRepo.GetUserIncomingOrdersAsync(userId);
@@ -275,6 +291,7 @@ namespace ShelfLife.Controllers
 
         // GET: api/User/{userId}/orders/outgoing
         [HttpGet("{userId}/orders/outgoing")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult<IEnumerable<OrderDisplayDTO>>> GetOutgoingOrders(int userId)
         {
             var orders = await _orderRepo.GetUserOutgoingOrdersAsync(userId);
@@ -283,6 +300,7 @@ namespace ShelfLife.Controllers
 
         // GET: api/User/{userId}/orders/{orderId}
         [HttpGet("{userId}/orders/{orderId}")]
+        [Authorize(Policy = "UserMatchesRoute")]
         public async Task<ActionResult<OrderDisplayDTO>> GetOrderDetail(int userId, int orderId)
         {
             var ownsListing = await _orderRepo.UserOwnsOrderListingAsync(userId, orderId);
@@ -296,6 +314,50 @@ namespace ShelfLife.Controllers
                 return NotFound(new { message = "Order not found" });
 
             return Ok(order);
+        }
+
+        // Update UserController.cs - Add this method to check user type
+
+        [HttpGet("{userId}/check-access")]
+        public async Task<ActionResult> CheckUserAccess(int userId)
+        {
+            var user = await _userRepo.GetUserByIdAsync(userId);
+            if (user == null)
+                return NotFound(new { message = "User not found" });
+
+            var userTypeFromToken = User.FindFirst(ClaimTypes.Role)?.Value;
+
+            return Ok(new
+            {
+                userType = user.UserType.ToString(),
+                isAuthorized = userTypeFromToken == user.UserType.ToString()
+            });
+        }
+
+        // For operations that should be Business only
+        [HttpGet("{userId}/business-stats")]
+        [Authorize(Policy = "BusinessOnly")]
+        public async Task<ActionResult> GetBusinessStats(int userId)
+        {
+            // Business-only operations
+            return Ok(new { message = "Business stats" });
+        }
+
+        // For operations that should be Normal User only
+        [HttpGet("{userId}/swap-listings")]
+        [Authorize(Policy = "NormalUserOnly")]
+        public async Task<ActionResult> GetSwapListings(int userId)
+        {
+            // Normal user-only operations
+            return Ok(new { message = "Swap listings" });
+        }
+
+        // HELPER: Hash password using SHA256 (same as AuthController)
+        private string HashPassword(string password)
+        {
+            using var sha256 = SHA256.Create();
+            var hash = sha256.ComputeHash(Encoding.UTF8.GetBytes(password));
+            return Convert.ToBase64String(hash);
         }
     }
 }

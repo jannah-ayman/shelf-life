@@ -96,6 +96,57 @@ namespace ShelfLife
                 };
             });
 
+            // Add authorization policy that checks userId in route matches JWT claim
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy("UserMatchesRoute", policy =>
+                    policy.RequireAssertion(context =>
+                    {
+                        var httpContext = context.Resource as HttpContext;
+                        if (httpContext == null)
+                            return false;
+
+                        var routeUserId = httpContext.Request.RouteValues["userId"]?.ToString();
+                        var claimUserId = context.User.FindFirst("userId")?.Value;
+
+                        return routeUserId == claimUserId;
+                    }));
+            });
+
+            // Add this after the existing "UserMatchesRoute" policy in Program.cs
+
+            builder.Services.AddAuthorization(options =>
+            {
+                options.AddPolicy("UserMatchesRoute", policy =>
+                    policy.RequireAssertion(context =>
+                    {
+                        var httpContext = context.Resource as HttpContext;
+                        if (httpContext == null)
+                            return false;
+
+                        var routeUserId = httpContext.Request.RouteValues["userId"]?.ToString();
+                        var claimUserId = context.User.FindFirst("userId")?.Value;
+
+                        return routeUserId == claimUserId;
+                    }));
+
+                // NEW: Add policy for Business users only
+                options.AddPolicy("BusinessOnly", policy =>
+                    policy.RequireAssertion(context =>
+                    {
+                        var userType = context.User.FindFirst(ClaimTypes.Role)?.Value;
+                        return userType == "BUSINESS";
+                    }));
+
+                // NEW: Add policy for Normal users only
+                options.AddPolicy("NormalUserOnly", policy =>
+                    policy.RequireAssertion(context =>
+                    {
+                        var userType = context.User.FindFirst(ClaimTypes.Role)?.Value;
+                        return userType == "NORMAL_USER";
+                    }));
+            });
+
             var app = builder.Build();
 
             // --- Seed default categories
